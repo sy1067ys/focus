@@ -4,11 +4,16 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
 // サイト設定（以前は ./.figma/make/site.json から読み込んでいた内容をここに直接記載）
-// title をサイト名に書き換えてください
 const siteConfiguration: FigmaSiteConfiguration = {
-  title: 'サイト名',
-  description: '',
+  title: 'FOCUS',
+  description: '余計なものを削ぎ落とし、一着に集中する。東京発のアパレルブランド FOCUS の公式オンラインストア。',
   language: 'ja',
+  robots: {
+    index: false, // 検索エンジンに表示させたい場合は true に変更
+  },
+  accessibility: {
+    addBypassLinks: false,
+  },
 }
 
 
