@@ -1,0 +1,1090 @@
+import { useState, useEffect } from 'react'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+type View = 'home' | 'collection' | 'lineup' | 'product' | 'story'
+type CartItem = { product: Product; size: string; qty: number }
+
+interface Product {
+  id: string
+  name: string
+  nameJa: string
+  price: number
+  material: string
+  description: string
+  sizes: string[]
+  color: string
+  colorName: string
+  image: string
+  images: string[]
+  category: string
+}
+
+// ─── Catalog ─────────────────────────────────────────────────────────────────
+const PRODUCTS: Product[] = [
+  {
+    id: 'p1',
+    name: 'Wide Sleeve Wool Coat',
+    nameJa: 'ワイドスリーブ ウールコート',
+    price: 68000,
+    material: '100% Virgin Wool',
+    description: '上質なヴァージンウールを使用した、ゆったりとした袖のコート。身体の輪郭を包み込むように設計されたシルエットは、着る人に静かな存在感をもたらします。',
+    sizes: ['XS', 'S', 'M', 'L'],
+    color: '#2a2520',
+    colorName: 'Charcoal',
+    image: 'https://images.unsplash.com/photo-1603189343302-e603f7add05a?w=800&h=1100&fit=crop&auto=format',
+    images: [
+      'https://images.unsplash.com/photo-1603189343302-e603f7add05a?w=800&h=1100&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1687276154823-66f9cba2e484?w=800&h=1100&fit=crop&auto=format',
+    ],
+    category: 'Outerwear',
+  },
+  {
+    id: 'p2',
+    name: 'Linen Wide Trousers',
+    nameJa: 'リネン ワイドトラウザーズ',
+    price: 32000,
+    material: '100% Linen',
+    description: '軽量なリネン素材を使用したワイドシルエットのトラウザーズ。夏の空気を纏うような着心地で、季節を問わず着用いただけます。',
+    sizes: ['XS', 'S', 'M', 'L', 'XL'],
+    color: '#c4b89a',
+    colorName: 'Sand',
+    image: 'https://images.unsplash.com/photo-1687276154397-74e327566a86?w=800&h=1100&fit=crop&auto=format',
+    images: [
+      'https://images.unsplash.com/photo-1687276154397-74e327566a86?w=800&h=1100&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1687276152656-f3fdf72bd5d8?w=800&h=1100&fit=crop&auto=format',
+    ],
+    category: 'Bottoms',
+  },
+  {
+    id: 'p3',
+    name: 'Cotton Voile Shirt',
+    nameJa: 'コットン ボイルシャツ',
+    price: 24000,
+    material: '100% Cotton Voile',
+    description: '薄手のコットンボイルを使用したオーバーサイズシャツ。透け感のある素材が、重ね着にも単体でも美しいシルエットを生み出します。',
+    sizes: ['S', 'M', 'L'],
+    color: '#f0ece4',
+    colorName: 'Ivory',
+    image: 'https://images.unsplash.com/photo-1613915617430-8ab0fd7c6baf?w=800&h=1100&fit=crop&auto=format',
+    images: [
+      'https://images.unsplash.com/photo-1613915617430-8ab0fd7c6baf?w=800&h=1100&fit=crop&auto=format',
+    ],
+    category: 'Tops',
+  },
+  {
+    id: 'p5',
+    name: 'Heavy Canvas Tote',
+    nameJa: 'ヘビーキャンバス トート',
+    price: 18000,
+    material: '12oz Cotton Canvas',
+    description: '厚手の綿キャンバスを使用したトートバッグ。使い込むほどに味わいが増し、長年のパートナーとなるよう設計されています。',
+    sizes: ['ONE'],
+    color: '#8a7d6a',
+    colorName: 'Khaki',
+    image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&h=1100&fit=crop&auto=format',
+    images: [
+      'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&h=1100&fit=crop&auto=format',
+    ],
+    category: 'Accessories',
+  },
+  {
+    id: 'p6',
+    name: 'Cashmere Rollneck',
+    nameJa: 'カシミア ロールネック',
+    price: 52000,
+    material: '100% Mongolian Cashmere',
+    description: 'モンゴル産カシミアを使用したロールネックニット。肌に触れる繊維の細さと、着るたびに増すやわらかさが特徴です。',
+    sizes: ['S', 'M', 'L', 'XL'],
+    color: '#b8a898',
+    colorName: 'Taupe',
+    image: 'https://images.unsplash.com/photo-1604522655203-b60144616d5b?w=800&h=1100&fit=crop&auto=format',
+    images: [
+      'https://images.unsplash.com/photo-1604522655203-b60144616d5b?w=800&h=1100&fit=crop&auto=format',
+    ],
+    category: 'Knitwear',
+  },
+]
+
+const CATEGORIES = ['All', 'Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Accessories']
+
+function fmtPrice(n: number) {
+  return `¥${n.toLocaleString('ja-JP')}`
+}
+
+// ─── Nav ─────────────────────────────────────────────────────────────────────
+function Nav({
+  view, setView, cartCount, onCartOpen
+}: {
+  view: View; setView: (v: View) => void; cartCount: number; onCartOpen: () => void
+}) {
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 40)
+    window.addEventListener('scroll', handler)
+    return () => window.removeEventListener('scroll', handler)
+  }, [])
+
+  return (
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+      style={{
+        background: scrolled ? 'rgba(240,233,223,0.96)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(12px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(26,24,20,0.08)' : '1px solid transparent',
+      }}
+    >
+      <div className="flex items-center justify-between px-8 md:px-12" style={{ height: 64 }}>
+        {/* Brand */}
+        <button
+          onClick={() => setView('home')}
+          style={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 22,
+            fontWeight: 300,
+            letterSpacing: '0.12em',
+            color: '#1a1814',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          FOUCUS
+        </button>
+
+        {/* Desktop links */}
+        <div className="hidden md:flex items-center gap-10">
+          {([['collection', 'Collection'], ['lineup', 'Lineup'], ['story', 'Story']] as [View, string][]).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: view === v ? '#1a1814' : '#8a8278',
+                fontWeight: 400,
+                transition: 'color 0.2s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right */}
+        <div className="flex items-center gap-5">
+          <button
+            onClick={onCartOpen}
+            className="relative flex items-center gap-1.5"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a1814' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+            {cartCount > 0 && (
+              <span style={{
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 10, color: '#8a7d6a',
+              }}>
+                {cartCount}
+              </span>
+            )}
+          </button>
+
+          {/* Mobile menu */}
+          <button
+            className="md:hidden"
+            onClick={() => setMenuOpen(o => !o)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a1814' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
+              {menuOpen
+                ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                : <><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="17" x2="21" y2="17"/></>
+              }
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile menu drawer */}
+      {menuOpen && (
+        <div style={{ background: '#f5f3ef', borderTop: '1px solid rgba(26,24,20,0.08)', padding: '24px 32px 32px' }}>
+          {(['collection', 'lineup', 'story'] as View[]).map(v => (
+            <button
+              key={v}
+              onClick={() => { setView(v); setMenuOpen(false) }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 14, letterSpacing: '0.1em', textTransform: 'uppercase',
+                color: '#1a1814', padding: '12px 0',
+                borderBottom: '1px solid rgba(26,24,20,0.06)',
+              }}
+            >
+              {v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+    </nav>
+  )
+}
+
+// ─── Cart Sidebar ─────────────────────────────────────────────────────────────
+function CartSidebar({
+  open, onClose, items, onRemove, onQtyChange
+}: {
+  open: boolean
+  onClose: () => void
+  items: CartItem[]
+  onRemove: (idx: number) => void
+  onQtyChange: (idx: number, qty: number) => void
+}) {
+  const total = items.reduce((s, i) => s + i.product.price * i.qty, 0)
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(26,24,20,0.3)',
+          zIndex: 100, opacity: open ? 1 : 0,
+          pointerEvents: open ? 'auto' : 'none',
+          transition: 'opacity 0.3s',
+        }}
+      />
+      {/* Drawer */}
+      <div
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw',
+          background: '#f5f3ef', zIndex: 101,
+          transform: open ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1)',
+          display: 'flex', flexDirection: 'column',
+          borderLeft: '1px solid rgba(26,24,20,0.08)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(26,24,20,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 300, letterSpacing: '0.05em' }}>
+            Cart
+          </span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8a8278' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Items */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+          {items.length === 0 ? (
+            <div style={{ textAlign: 'center', paddingTop: 80, color: '#8a8278', fontSize: 13, letterSpacing: '0.05em' }}>
+              カートは空です
+            </div>
+          ) : items.map((item, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 16, paddingBottom: 24, marginBottom: 24, borderBottom: '1px solid rgba(26,24,20,0.06)' }}>
+              <div style={{ width: 72, height: 96, background: '#e8e4dc', flexShrink: 0, overflow: 'hidden' }}>
+                <img src={item.product.image} alt={item.product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: '#1a1814', letterSpacing: '0.05em', lineHeight: 1.5, marginBottom: 4 }}>{item.product.name}</div>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#8a8278', marginBottom: 8 }}>{item.size} / {item.product.colorName}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => onQtyChange(idx, Math.max(1, item.qty - 1))} style={{ background: 'none', border: '1px solid rgba(26,24,20,0.15)', width: 22, height: 22, cursor: 'pointer', fontSize: 12, color: '#1a1814' }}>−</button>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11 }}>{item.qty}</span>
+                    <button onClick={() => onQtyChange(idx, item.qty + 1)} style={{ background: 'none', border: '1px solid rgba(26,24,20,0.15)', width: 22, height: 22, cursor: 'pointer', fontSize: 12, color: '#1a1814' }}>+</button>
+                  </div>
+                  <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12 }}>{fmtPrice(item.product.price * item.qty)}</span>
+                </div>
+              </div>
+              <button onClick={() => onRemove(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c4b4a4', alignSelf: 'flex-start' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        {items.length > 0 && (
+          <div style={{ padding: '24px 32px', borderTop: '1px solid rgba(26,24,20,0.08)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: '#8a8278', letterSpacing: '0.05em' }}>小計</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13 }}>{fmtPrice(total)}</span>
+            </div>
+            <div style={{ fontSize: 10, color: '#b0a898', marginBottom: 20, letterSpacing: '0.04em' }}>送料は次のステップで計算されます</div>
+            <button style={{
+              width: '100%', padding: '16px', background: '#1a1814', color: '#f5f3ef',
+              border: 'none', cursor: 'pointer', fontSize: 11, letterSpacing: '0.2em',
+              textTransform: 'uppercase', fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 400, transition: 'opacity 0.2s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+            >
+              購入手続きへ
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─── Home ─────────────────────────────────────────────────────────────────────
+function HomeView({ setView, setProductId }: { setView: (v: View) => void; setProductId: (id: string) => void }) {
+  return (
+    <div>
+      {/* Hero */}
+      <section style={{ position: 'relative', height: '100vh', minHeight: 600, background: '#2a2520', overflow: 'hidden' }}>
+        <img
+          src="https://images.unsplash.com/photo-1603189343302-e603f7add05a?w=1600&h=1800&fit=crop&auto=format"
+          alt="FOUCUS AW25 Collection — Wide sleeve wool coat"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }}
+        />
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, transparent 40%, rgba(26,24,20,0.55) 100%)',
+        }} />
+        <div style={{ position: 'absolute', bottom: 64, left: 48 }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'rgba(245,243,239,0.5)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 16 }}>
+            Autumn Winter 2025
+          </div>
+          <h1 style={{
+            fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic',
+            fontSize: 'clamp(48px, 8vw, 96px)', lineHeight: 1,
+            color: '#f5f3ef', letterSpacing: '-0.02em', marginBottom: 32,
+          }}>
+            静寂の<br />かたち
+          </h1>
+          <button
+            onClick={() => setView('collection')}
+            style={{
+              background: 'none', border: '1px solid rgba(245,243,239,0.4)',
+              color: '#f5f3ef', padding: '14px 32px', cursor: 'pointer',
+              fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
+              fontFamily: "'Work Sans', sans-serif", fontWeight: 400,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,243,239,0.1)'; e.currentTarget.style.borderColor = 'rgba(245,243,239,0.7)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'rgba(245,243,239,0.4)' }}
+          >
+            コレクションを見る
+          </button>
+        </div>
+
+        {/* Scroll indicator */}
+        <div style={{ position: 'absolute', right: 40, bottom: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 1, height: 48, background: 'rgba(245,243,239,0.3)' }} />
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'rgba(245,243,239,0.35)', letterSpacing: '0.15em', writingMode: 'vertical-lr' }}>
+            SCROLL
+          </span>
+        </div>
+      </section>
+
+      {/* Featured products */}
+      <section style={{ padding: '100px 48px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 64 }}>
+          <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 36, letterSpacing: '-0.01em', color: '#1a1814' }}>
+            New Arrivals
+          </h2>
+          <button
+            onClick={() => setView('collection')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase',
+              color: '#8a8278', fontFamily: "'Work Sans', sans-serif",
+              textDecoration: 'underline', textUnderlineOffset: 4,
+            }}
+          >
+            すべて見る
+          </button>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '48px 32px',
+        }}>
+          {PRODUCTS.slice(0, 4).map(p => (
+            <ProductCard key={p.id} product={p} onSelect={() => { setProductId(p.id); setView('product') }} />
+          ))}
+        </div>
+      </section>
+
+      {/* Editorial banner */}
+      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 560 }}>
+        <div style={{ background: '#1a1814', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 64 }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#8a7d6a', letterSpacing: '0.2em', marginBottom: 20 }}>
+            PHILOSOPHY
+          </div>
+          <p style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 28, color: '#f5f3ef', lineHeight: 1.4, letterSpacing: '-0.01em', marginBottom: 32 }}>
+            "少ないもので、<br />深く生きる"
+          </p>
+          <button
+            onClick={() => setView('story')}
+            style={{
+              background: 'none', border: '1px solid rgba(245,243,239,0.25)',
+              color: '#f5f3ef', padding: '12px 24px', cursor: 'pointer',
+              fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase',
+              fontFamily: "'Work Sans', sans-serif", width: 'fit-content',
+              transition: 'border-color 0.2s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(245,243,239,0.6)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(245,243,239,0.25)')}
+          >
+            Our Story
+          </button>
+        </div>
+        <div style={{ background: '#c4b89a', overflow: 'hidden' }}>
+          <img
+            src="https://images.unsplash.com/photo-1687276152656-f3fdf72bd5d8?w=900&h=700&fit=crop&auto=format"
+            alt="FOUCUS Lookbook"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }}
+          />
+        </div>
+      </section>
+
+      {/* Category links */}
+      <section style={{ padding: '100px 48px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+          {['Outerwear', 'Tops', 'Bottoms', 'Knitwear'].map((cat, i) => (
+            <button
+              key={cat}
+              onClick={() => setView('collection')}
+              style={{
+                background: i % 2 === 0 ? '#ede9e1' : '#e4dfd5',
+                border: 'none', cursor: 'pointer',
+                padding: '48px 32px', textAlign: 'left',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#d4cfc5')}
+              onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#ede9e1' : '#e4dfd5')}
+            >
+              <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 22, fontWeight: 300, marginBottom: 8, color: '#1a1814' }}>{cat}</div>
+              <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#8a8278' }}>Shop →</div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  )
+}
+
+// ─── Product Card ─────────────────────────────────────────────────────────────
+function ProductCard({ product, onSelect }: { product: Product; onSelect: () => void }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ cursor: 'pointer' }}
+      onClick={onSelect}
+    >
+      <div style={{ position: 'relative', overflow: 'hidden', background: '#e8e4dc', marginBottom: 16, aspectRatio: '3/4' }}>
+        <img
+          src={product.image}
+          alt={product.nameJa}
+          style={{
+            width: '100%', height: '100%', objectFit: 'cover',
+            transform: hovered ? 'scale(1.03)' : 'scale(1)',
+            transition: 'transform 0.6s cubic-bezier(0.22,1,0.36,1)',
+          }}
+        />
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          padding: '16px', opacity: hovered ? 1 : 0,
+          transform: hovered ? 'translateY(0)' : 'translateY(6px)',
+          transition: 'all 0.3s',
+        }}>
+          <div style={{
+            background: 'rgba(245,243,239,0.92)', backdropFilter: 'blur(4px)',
+            padding: '10px 16px', textAlign: 'center',
+            fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#1a1814',
+          }}>
+            Quick View
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: 13, color: '#1a1814', marginBottom: 2, lineHeight: 1.4 }}>{product.name}</div>
+          <div style={{ fontSize: 11, color: '#8a8278', letterSpacing: '0.04em' }}>{product.nameJa}</div>
+        </div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: '#1a1814', flexShrink: 0, marginLeft: 8 }}>
+          {fmtPrice(product.price)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Collection View ──────────────────────────────────────────────────────────
+function CollectionView({ setView, setProductId }: { setView: (v: View) => void; setProductId: (id: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState('All')
+
+  const filtered = activeCategory === 'All'
+    ? PRODUCTS
+    : PRODUCTS.filter(p => p.category === activeCategory)
+
+  return (
+    <div style={{ paddingTop: 64 }}>
+      {/* Header */}
+      <div style={{ padding: '64px 48px 48px', borderBottom: '1px solid rgba(26,24,20,0.08)' }}>
+        <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 48, letterSpacing: '-0.02em', marginBottom: 32 }}>
+          AW 2025 Collection
+        </h1>
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap' }}>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              style={{
+                background: 'none', cursor: 'pointer', padding: '8px 20px',
+                fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+                fontFamily: "'Work Sans', sans-serif",
+                color: activeCategory === cat ? '#1a1814' : '#8a8278',
+                borderBottom: activeCategory === cat ? '1px solid #1a1814' : '1px solid transparent',
+                border: 'none', borderBottom: activeCategory === cat ? '1px solid #1a1814' : '1px solid transparent',
+                transition: 'all 0.2s', paddingLeft: cat === 'All' ? 0 : 20,
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div style={{ padding: '64px 48px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '64px 32px',
+        }}>
+          {filtered.map(p => (
+            <ProductCard key={p.id} product={p} onSelect={() => { setProductId(p.id); setView('product') }} />
+          ))}
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  )
+}
+
+// ─── Product View ─────────────────────────────────────────────────────────────
+function ProductView({
+  productId, setView, onAddToCart
+}: {
+  productId: string
+  setView: (v: View) => void
+  onAddToCart: (product: Product, size: string) => void
+}) {
+  const product = PRODUCTS.find(p => p.id === productId)
+  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  const [activeImg, setActiveImg] = useState(0)
+  const [added, setAdded] = useState(false)
+
+  if (!product) return null
+
+  function handleAdd() {
+    if (!selectedSize) return
+    onAddToCart(product!, selectedSize)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 2000)
+  }
+
+  const related = PRODUCTS.filter(p => p.id !== product.id).slice(0, 3)
+
+  return (
+    <div style={{ paddingTop: 64 }}>
+      {/* Breadcrumb */}
+      <div style={{ padding: '24px 48px', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={() => setView('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#8a8278', letterSpacing: '0.08em' }}>Home</button>
+        <span style={{ color: '#c4b4a4', fontSize: 10 }}>—</span>
+        <button onClick={() => setView('collection')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#8a8278', letterSpacing: '0.08em' }}>Collection</button>
+        <span style={{ color: '#c4b4a4', fontSize: 10 }}>—</span>
+        <span style={{ fontSize: 11, color: '#1a1814', letterSpacing: '0.08em' }}>{product.name}</span>
+      </div>
+
+      {/* Main layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, minHeight: '80vh' }}>
+        {/* Images */}
+        <div style={{ padding: '0 24px 0 48px', position: 'sticky', top: 64, height: 'fit-content' }}>
+          <div style={{ background: '#e8e4dc', aspectRatio: '3/4', overflow: 'hidden', marginBottom: 12 }}>
+            <img
+              src={product.images[activeImg]}
+              alt={product.nameJa}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+          {product.images.length > 1 && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {product.images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveImg(i)}
+                  style={{
+                    width: 64, height: 80, padding: 0, border: 'none',
+                    outline: activeImg === i ? '1px solid #1a1814' : '1px solid transparent',
+                    outlineOffset: 2, cursor: 'pointer', overflow: 'hidden', background: '#e8e4dc',
+                  }}
+                >
+                  <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Details */}
+        <div style={{ padding: '16px 48px 80px 24px' }}>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#8a8278', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 12 }}>
+            {product.category}
+          </div>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontSize: 32, letterSpacing: '-0.01em', marginBottom: 4, lineHeight: 1.2 }}>
+            {product.name}
+          </h1>
+          <div style={{ fontSize: 12, color: '#8a8278', marginBottom: 28, letterSpacing: '0.04em' }}>{product.nameJa}</div>
+
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 22, fontWeight: 300, color: '#1a1814', marginBottom: 40 }}>
+            {fmtPrice(product.price)}
+            <span style={{ fontSize: 11, color: '#8a8278', marginLeft: 8, fontWeight: 300 }}>税込</span>
+          </div>
+
+          {/* Color */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a8278', marginBottom: 12 }}>
+              Color — <span style={{ color: '#1a1814' }}>{product.colorName}</span>
+            </div>
+            <div style={{ width: 28, height: 28, background: product.color, border: '1px solid rgba(26,24,20,0.15)', outline: '2px solid #1a1814', outlineOffset: 2 }} />
+          </div>
+
+          {/* Size */}
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8a8278', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Size {selectedSize && `— ${selectedSize}`}</span>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8a8278', textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 10 }}>
+                サイズガイド
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {product.sizes.map(size => (
+                <button
+                  key={size}
+                  onClick={() => setSelectedSize(size)}
+                  style={{
+                    width: 52, height: 52, background: 'none', cursor: 'pointer',
+                    border: selectedSize === size ? '1px solid #1a1814' : '1px solid rgba(26,24,20,0.2)',
+                    fontSize: 11, letterSpacing: '0.05em',
+                    color: selectedSize === size ? '#1a1814' : '#8a8278',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Add to cart */}
+          <button
+            onClick={handleAdd}
+            disabled={!selectedSize}
+            style={{
+              width: '100%', padding: '18px',
+              background: added ? '#5a7a5a' : (selectedSize ? '#1a1814' : '#c4bdb4'),
+              color: '#f5f3ef', border: 'none', cursor: selectedSize ? 'pointer' : 'not-allowed',
+              fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
+              fontFamily: "'Work Sans', sans-serif", fontWeight: 400,
+              transition: 'all 0.25s', marginBottom: 12,
+            }}
+          >
+            {added ? '✓ カートに追加しました' : selectedSize ? 'カートに追加' : 'サイズを選択してください'}
+          </button>
+
+          {/* Material & care */}
+          <div style={{ marginTop: 48, paddingTop: 32, borderTop: '1px solid rgba(26,24,20,0.08)' }}>
+            <details style={{ marginBottom: 16 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#1a1814', listStyle: 'none', display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid rgba(26,24,20,0.06)' }}>
+                <span>素材・詳細</span>
+                <span style={{ color: '#8a8278' }}>+</span>
+              </summary>
+              <div style={{ padding: '16px 0', fontSize: 13, color: '#5a5248', lineHeight: 1.8 }}>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, marginBottom: 12 }}>{product.material}</div>
+                <p>{product.description}</p>
+              </div>
+            </details>
+            <details style={{ marginBottom: 16 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#1a1814', listStyle: 'none', display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid rgba(26,24,20,0.06)' }}>
+                <span>お手入れ方法</span>
+                <span style={{ color: '#8a8278' }}>+</span>
+              </summary>
+              <div style={{ padding: '16px 0', fontSize: 13, color: '#5a5248', lineHeight: 1.8 }}>
+                ドライクリーニングを推奨します。やむを得ない場合は、手洗いにて30℃以下でお洗いください。
+              </div>
+            </details>
+            <details>
+              <summary style={{ cursor: 'pointer', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#1a1814', listStyle: 'none', display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid rgba(26,24,20,0.06)' }}>
+                <span>配送・返品</span>
+                <span style={{ color: '#8a8278' }}>+</span>
+              </summary>
+              <div style={{ padding: '16px 0', fontSize: 13, color: '#5a5248', lineHeight: 1.8 }}>
+                全国送料無料。お届けまで3〜5営業日。商品到着後14日以内、未使用・タグ付きの場合のみご返品を承ります。
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      {/* Related */}
+      <div style={{ padding: '80px 48px', borderTop: '1px solid rgba(26,24,20,0.08)' }}>
+        <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 28, marginBottom: 48 }}>You may also like</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0 32px' }}>
+          {related.map(p => (
+            <ProductCard key={p.id} product={p} onSelect={() => { setProductId(p.id); window.scrollTo(0, 0) }} />
+          ))}
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  )
+}
+
+// ─── Lineup View ──────────────────────────────────────────────────────────────
+function LineupView({ setView, setProductId }: { setView: (v: View) => void; setProductId: (id: string) => void }) {
+  const categories = ['Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Accessories']
+
+  return (
+    <div style={{ paddingTop: 64, background: '#f5f3ef' }}>
+      {/* Page header */}
+      <div style={{ padding: '72px 48px 0', borderBottom: '1px solid rgba(26,24,20,0.08)', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 40 }}>
+        <div>
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#8a8278', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>
+            AW 2025 — 全商品
+          </div>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 52, letterSpacing: '-0.02em', color: '#1a1814', lineHeight: 1 }}>
+            Lineup
+          </h1>
+        </div>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: '#8a8278', paddingBottom: 6 }}>
+          {PRODUCTS.length} items
+        </div>
+      </div>
+
+      {/* Category sections */}
+      {categories.map((cat, catIdx) => {
+        const items = PRODUCTS.filter(p => p.category === cat)
+        if (items.length === 0) return null
+        return (
+          <section
+            key={cat}
+            style={{
+              borderBottom: '1px solid rgba(26,24,20,0.08)',
+              background: catIdx % 2 === 1 ? '#ede9e1' : '#f5f3ef',
+            }}
+          >
+            {/* Category row header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '200px 1fr',
+              borderBottom: '1px solid rgba(26,24,20,0.06)',
+            }}>
+              <div style={{
+                padding: '48px 48px',
+                borderRight: '1px solid rgba(26,24,20,0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}>
+                <div>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: '#8a8278', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>
+                    {String(catIdx + 1).padStart(2, '0')}
+                  </div>
+                  <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontWeight: 300, fontSize: 22, color: '#1a1814', marginBottom: 4 }}>
+                    {cat}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#8a8278' }}>{items.length} {items.length === 1 ? 'item' : 'items'}</div>
+                </div>
+                <button
+                  onClick={() => setView('collection')}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
+                    color: '#8a8278', textDecoration: 'underline', textUnderlineOffset: 3,
+                    textAlign: 'left', padding: 0, marginTop: 40,
+                  }}
+                >
+                  すべて見る
+                </button>
+              </div>
+
+              {/* Product strip */}
+              <div style={{ overflowX: 'auto', padding: '40px 48px' }}>
+                <div style={{ display: 'flex', gap: 24, minWidth: 'max-content' }}>
+                  {items.map(p => (
+                    <div
+                      key={p.id}
+                      onClick={() => { setProductId(p.id); setView('product') }}
+                      style={{ cursor: 'pointer', width: 220, flexShrink: 0 }}
+                    >
+                      <LineupCard product={p} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )
+      })}
+
+      {/* Full table view */}
+      <section style={{ padding: '80px 48px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 32 }}>
+          <h2 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 24, color: '#1a1814' }}>
+            Price List
+          </h2>
+        </div>
+        <div style={{ border: '1px solid rgba(26,24,20,0.08)' }}>
+          {/* Table header */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 120px',
+            padding: '14px 24px', background: '#1a1814',
+          }}>
+            {['商品名', 'カテゴリ', '素材', '価格'].map(h => (
+              <div key={h} style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'rgba(245,243,239,0.5)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{h}</div>
+            ))}
+          </div>
+          {PRODUCTS.map((p, i) => (
+            <div
+              key={p.id}
+              onClick={() => { setProductId(p.id); setView('product') }}
+              style={{
+                display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 120px',
+                padding: '18px 24px', cursor: 'pointer',
+                background: i % 2 === 0 ? '#f5f3ef' : '#ede9e1',
+                borderTop: '1px solid rgba(26,24,20,0.05)',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#e4dfd5')}
+              onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#f5f3ef' : '#ede9e1')}
+            >
+              <div>
+                <div style={{ fontSize: 13, color: '#1a1814', marginBottom: 2 }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: '#8a8278' }}>{p.nameJa}</div>
+              </div>
+              <div style={{ fontSize: 12, color: '#5a5248', alignSelf: 'center' }}>{p.category}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: '#8a8278', alignSelf: 'center' }}>{p.material}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: '#1a1814', alignSelf: 'center', textAlign: 'right' }}>{fmtPrice(p.price)}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  )
+}
+
+function LineupCard({ product }: { product: Product }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={{ background: '#e8e4dc', overflow: 'hidden', aspectRatio: '2/3', marginBottom: 12 }}>
+        <img
+          src={product.image}
+          alt={product.nameJa}
+          style={{
+            width: '100%', height: '100%', objectFit: 'cover',
+            transform: hovered ? 'scale(1.04)' : 'scale(1)',
+            transition: 'transform 0.5s cubic-bezier(0.22,1,0.36,1)',
+          }}
+        />
+      </div>
+      <div style={{ fontSize: 12, color: '#1a1814', marginBottom: 2, lineHeight: 1.4 }}>{product.name}</div>
+      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: '#5a5248' }}>{fmtPrice(product.price)}</div>
+    </div>
+  )
+}
+
+// ─── Story View ───────────────────────────────────────────────────────────────
+function StoryView() {
+  return (
+    <div style={{ paddingTop: 64 }}>
+      <div style={{ position: 'relative', height: '60vh', minHeight: 400, overflow: 'hidden', background: '#1a1814' }}>
+        <img
+          src="https://images.unsplash.com/photo-1714205901306-e79a306f901a?w=1600&h=800&fit=crop&auto=format"
+          alt="FOUCUS Story"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }}
+        />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', padding: '64px 48px' }}>
+          <div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: 'rgba(245,243,239,0.45)', letterSpacing: '0.2em', marginBottom: 16 }}>
+              EST. 2019, TOKYO
+            </div>
+            <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 300, fontStyle: 'italic', fontSize: 56, color: '#f5f3ef', letterSpacing: '-0.02em' }}>
+              Our Story
+            </h1>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '96px 48px' }}>
+        <p style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 24, fontWeight: 300, lineHeight: 1.6, color: '#1a1814', marginBottom: 48, letterSpacing: '-0.01em' }}>
+          "白（FOUCUS）"は、白紙のキャンバスを意味します。
+          余分なものを削ぎ落とし、本質だけを残す。
+          それが私たちのデザイン哲学です。
+        </p>
+
+        <div style={{ width: 1, height: 64, background: 'rgba(26,24,20,0.15)', margin: '0 auto 48px' }} />
+
+        <p style={{ fontSize: 15, lineHeight: 2, color: '#5a5248', marginBottom: 32 }}>
+          2019年、東京・代官山に生まれたFOUCUSは、「少ないもので、深く生きる」という思想のもと、日本の職人技術とコンテンポラリーなシルエットを融合させたアパレルブランドです。
+        </p>
+        <p style={{ fontSize: 15, lineHeight: 2, color: '#5a5248', marginBottom: 32 }}>
+          私たちが選ぶ素材はすべて、生産地を訪れ、職人と対話を重ねた上で決定します。モンゴルのカシミア、日本国内の備後絣、フランスのリネン。素材の背景にある物語が、衣服に宿る豊かさだと信じているからです。
+        </p>
+        <p style={{ fontSize: 15, lineHeight: 2, color: '#5a5248' }}>
+          季節ごとに展開するコレクションは、トレンドではなく、着る人の日常と寄り添うことを優先して設計されています。10年後も、その人のクローゼットで生き続けるものを。
+        </p>
+
+        <div style={{ marginTop: 80, padding: '48px', background: '#ede9e1', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
+          {[
+            { num: '2019', label: '設立年' },
+            { num: '47', label: 'ストックアイテム数' },
+            { num: '12', label: '国への出荷実績' },
+          ].map(s => (
+            <div key={s.label} style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Fraunces', serif", fontSize: 36, fontWeight: 300, fontStyle: 'italic', color: '#1a1814', marginBottom: 8 }}>{s.num}</div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#8a8278', letterSpacing: '0.15em' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  )
+}
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+function Footer() {
+  return (
+    <footer style={{ background: '#1a1814', color: '#f5f3ef', padding: '80px 48px 48px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48, marginBottom: 80 }}>
+        <div>
+          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 28, fontWeight: 300, letterSpacing: '0.12em', marginBottom: 16 }}>FOUCUS</div>
+          <p style={{ fontSize: 12, color: 'rgba(245,243,239,0.45)', lineHeight: 1.8, maxWidth: 240 }}>
+            少ないもので、深く生きる。<br />
+            東京発、日本の職人技術と<br />
+            コンテンポラリーデザインの融合。
+          </p>
+        </div>
+        {[
+          { title: 'Shop', links: ['Collection', 'New Arrivals', 'Lookbook', 'Archive'] },
+          { title: 'Info', links: ['About', 'Sustainability', 'Stockists', 'Press'] },
+          { title: 'Help', links: ['Size Guide', 'Shipping', 'Returns', 'Contact'] },
+        ].map(col => (
+          <div key={col.title}>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, letterSpacing: '0.2em', color: 'rgba(245,243,239,0.35)', textTransform: 'uppercase', marginBottom: 20 }}>{col.title}</div>
+            {col.links.map(link => (
+              <div key={link} style={{ marginBottom: 12 }}>
+                <a href="#" style={{ fontSize: 12, color: 'rgba(245,243,239,0.55)', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }}
+                  onMouseEnter={e => ((e.target as HTMLElement).style.color = 'rgba(245,243,239,0.9)')}
+                  onMouseLeave={e => ((e.target as HTMLElement).style.color = 'rgba(245,243,239,0.55)')}
+                >{link}</a>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ borderTop: '1px solid rgba(245,243,239,0.08)', paddingTop: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ fontSize: 11, color: 'rgba(245,243,239,0.25)', letterSpacing: '0.05em' }}>
+          © 2025 FOUCUS Inc. All rights reserved.
+        </div>
+        <div style={{ display: 'flex', gap: 24 }}>
+          {['Instagram', 'Twitter', 'Pinterest'].map(s => (
+            <a key={s} href="#" style={{ fontSize: 11, color: 'rgba(245,243,239,0.3)', textDecoration: 'none', letterSpacing: '0.08em' }}>{s}</a>
+          ))}
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [view, setView] = useState<View>('home')
+  const [productId, setProductId] = useState<string>('')
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [cartOpen, setCartOpen] = useState(false)
+
+  function addToCart(product: Product, size: string) {
+    setCart(prev => {
+      const idx = prev.findIndex(i => i.product.id === product.id && i.size === size)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { ...next[idx], qty: next[idx].qty + 1 }
+        return next
+      }
+      return [...prev, { product, size, qty: 1 }]
+    })
+    setCartOpen(true)
+  }
+
+  function removeFromCart(idx: number) {
+    setCart(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function changeQty(idx: number, qty: number) {
+    setCart(prev => prev.map((item, i) => i === idx ? { ...item, qty } : item))
+  }
+
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0)
+
+  function navigate(v: View) {
+    setView(v)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f5f3ef' }}>
+      <Nav view={view} setView={navigate} cartCount={cartCount} onCartOpen={() => setCartOpen(true)} />
+
+      {view === 'home' && <HomeView setView={navigate} setProductId={setProductId} />}
+      {view === 'collection' && <CollectionView setView={navigate} setProductId={setProductId} />}
+      {view === 'lineup' && <LineupView setView={navigate} setProductId={setProductId} />}
+      {view === 'product' && (
+        <ProductView productId={productId} setView={navigate} onAddToCart={addToCart} />
+      )}
+      {view === 'story' && <StoryView />}
+
+      <CartSidebar
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        items={cart}
+        onRemove={removeFromCart}
+        onQtyChange={changeQty}
+      />
+    </div>
+  )
+}

@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,600&family=Work+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400&display=swap');
+@import 'tailwindcss';
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { scroll-behavior: smooth; }
+html, body, #root { height: 100%; }
+
+body {
+  background: #f0e9df;
+  color: #1c1510;
+  font-family: 'Work Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-weight: 300;
+}
+
+::selection { background: #b5864a33; }
+::-webkit-scrollbar { width: 0; }
+input, button, select { font-family: inherit; }
