@@ -414,106 +414,6 @@ function Footer() {
   )
 }
 
-// ─── トップページ ─────────────────────────────────────────────
-
-function HomePage() {
-  const newArrivals = PRODUCTS.filter(p => p.isNew)
-  const featured = (newArrivals.length ? newArrivals : PRODUCTS).slice(0, 4)
-
-  return (
-    <>
-      {/* メインビジュアル */}
-      <section>
-        <Container className="grid gap-8 pt-8 md:grid-cols-12 md:gap-8 md:pt-8">
-          <div className="flex flex-col justify-end md:col-span-5 md:justify-center md:py-8">
-            <Eyebrow>{SHOP.hero.season}</Eyebrow>
-            <h1 className="mt-6 text-[54px] font-light leading-[1.02] tracking-[-0.035em] md:text-[clamp(60px,5.8vw,96px)]">
-              <Lines text={CONCEPT} />
-            </h1>
-            <p className="mt-5 flex items-center gap-3 text-[13px] tracking-[0.12em] md:mt-6 md:text-[14px]">
-              <span className="h-px w-8 bg-ink" aria-hidden="true" />
-              {SHOP.tagline}
-            </p>
-            <p className="mt-6 max-w-sm text-[14px] leading-[1.9] text-mute md:mt-8">
-              <Lines text={SHOP.hero.lead} />
-            </p>
-            <div className="mt-8">
-              <ArrowLink href="#/shop">コレクションを見る</ArrowLink>
-            </div>
-          </div>
-          <div className="md:col-span-7">
-            {/* PCでは画面の高さに収まるサイズにして、コンセプトが最初の画面に入るようにする */}
-            <div className="aspect-[4/5] overflow-hidden bg-stone md:aspect-auto md:h-[calc(100svh-176px)] md:max-h-[920px] md:min-h-[520px]">
-              <img src={SHOP.hero.image} alt={`${SHOP.brandName} ${SHOP.hero.season}`} className="h-full w-full object-cover" />
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* 新作 */}
-      <section className="mt-24 md:mt-36">
-        <Container>
-          <div className="mb-8 flex items-end justify-between md:mb-12">
-            <h2 className="text-[26px] font-light tracking-[-0.01em] md:text-[34px]">New arrivals</h2>
-            <ArrowLink href="#/shop">すべて見る</ArrowLink>
-          </div>
-          <ProductGrid products={featured} />
-        </Container>
-      </section>
-
-      {/* ブランドの考え方 */}
-      <section className="mt-24 md:mt-36">
-        <Container className="grid items-center gap-10 md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-6">
-            <div className="aspect-[4/5] overflow-hidden bg-stone">
-              <img src={SHOP.philosophy.image} alt="" loading="lazy" className="h-full w-full object-cover" />
-            </div>
-          </div>
-          <div className="md:col-span-5 md:col-start-8">
-            <Mark className="mb-8 w-12 md:mb-10 md:w-16" />
-            <Eyebrow>Philosophy</Eyebrow>
-            <p className="mt-5 text-[26px] font-light leading-[1.5] md:text-[32px]">
-              <Lines text={SHOP.philosophy.title} />
-            </p>
-            <p className="mt-6 text-[14px] leading-[2] text-mute">{SHOP.philosophy.body}</p>
-            <div className="mt-8">
-              <ArrowLink href="#/about">ブランドについて</ArrowLink>
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* カテゴリ */}
-      <section className="mt-24 md:mt-36">
-        <Container>
-          <Eyebrow>Category</Eyebrow>
-          <ul className="mt-6 border-t border-line">
-            {CATEGORIES.map(c => {
-              const count = PRODUCTS.filter(p => p.category === c).length
-              return (
-                <li key={c} className="border-b border-line">
-                  <a href={`#/shop/${c.toLowerCase()}`} className="group flex items-center justify-between py-5 md:py-7">
-                    <span className="flex items-baseline gap-4">
-                      <span className="text-[24px] font-light transition-transform duration-300 group-hover:translate-x-2 md:text-[40px]">
-                        {c}
-                      </span>
-                      <span className="text-[12px] text-mute">{CATEGORY_LABELS[c]}</span>
-                    </span>
-                    <span className="flex items-center gap-4 text-[12px] text-mute">
-                      <span className="tabular-nums">{count} items</span>
-                      <Icon name="arrow" className="h-5 w-5 text-ink" />
-                    </span>
-                  </a>
-                </li>
-              )
-            })}
-          </ul>
-        </Container>
-      </section>
-    </>
-  )
-}
-
 // ─── 商品一覧 ─────────────────────────────────────────────────
 
 function ShopPage({ category }: { category: Category | null }) {
@@ -870,8 +770,9 @@ function PrivacyPage() {
   )
 }
 
-// ─── SNS用ページ（プロフィールに貼るリンク集） ───────────────
-// URL: https://（サイトのドメイン）/#/links
+// ─── トップページ ／ SNS用ページ（同じデザイン） ─────────────
+// トップ: https://（サイトのドメイン）/
+// SNS用: https://（サイトのドメイン）/#/links
 
 function LinkRow({ href, title, sub, external }: { href: string; title: string; sub: string; external?: boolean }) {
   return (
@@ -889,7 +790,7 @@ function LinkRow({ href, title, sub, external }: { href: string; title: string; 
   )
 }
 
-function LinksPage() {
+function LinksPage({ isHome, cartCount, onOpenCart }: { isHome: boolean; cartCount: number; onOpenCart: () => void }) {
   const [copied, setCopied] = useState(false)
   // 新作を優先して並べ、3の倍数（最大6枚）にそろえて並びに隙間ができないようにする
   const sorted = [...PRODUCTS.filter(p => p.isNew), ...PRODUCTS.filter(p => !p.isNew)]
@@ -913,18 +814,29 @@ function LinksPage() {
 
   return (
     <div className="mx-auto w-full max-w-[460px] px-5 pb-16 pt-12 md:pt-20">
+      {/* カートに商品があるときだけ、右上にカートを表示 */}
+      {cartCount > 0 && (
+        <button onClick={onOpenCart} className="fixed right-4 top-4 z-30 border border-ink bg-paper px-4 py-2 text-[12px] tracking-wide md:right-8 md:top-6">
+          Cart <span className="tabular-nums">({cartCount})</span>
+        </button>
+      )}
+
       {/* ブランド */}
       <div className="flex flex-col items-center text-center">
         <Mark className="w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
         <Logo className="mt-6 w-[180px]" />
-        <p className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</p>
+        {isHome ? (
+          <h1 className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</h1>
+        ) : (
+          <p className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</p>
+        )}
         <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
       </div>
 
       {/* リンク */}
       <nav className="mt-10 space-y-3" aria-label="公式リンク">
         <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
-        <LinkRow href="#/" title="Website" sub="公式サイト" />
+        {!isHome && <LinkRow href="#/" title="Website" sub="公式サイト" />}
         <LinkRow href="#/about" title="About" sub="ブランドについて" />
         <LinkRow href="#/guide" title="Guide" sub="送料・返品・サイズガイド" />
       </nav>
@@ -970,7 +882,11 @@ function LinksPage() {
             {copied ? 'リンクをコピーしました' : 'このページのリンクをコピー'}
           </button>
         </div>
-        <p className="mt-10 text-[11px] text-mute">© {new Date().getFullYear()} {SHOP.brandName}</p>
+        <div className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[11px] text-mute">
+          <a href="#/legal" className="hover:text-ink">特定商取引法に基づく表記</a>
+          <a href="#/privacy" className="hover:text-ink">プライバシーポリシー</a>
+        </div>
+        <p className="mt-4 text-[11px] text-mute">© {new Date().getFullYear()} {SHOP.brandName}</p>
       </section>
     </div>
   )
@@ -1176,7 +1092,7 @@ export default function App() {
   let page: ReactNode
   switch (route.page) {
     case 'home':
-      page = <HomePage />
+      page = <LinksPage isHome cartCount={cart.count} onOpenCart={() => setCartOpen(true)} />
       break
     case 'shop':
       page = <ShopPage category={route.category} />
@@ -1197,15 +1113,20 @@ export default function App() {
       page = <PrivacyPage />
       break
     case 'links':
-      page = <LinksPage />
+      page = <LinksPage isHome={false} cartCount={cart.count} onOpenCart={() => setCartOpen(true)} />
       break
     default:
       page = <NotFoundPage />
   }
 
-  // SNS用ページはリンク集だけをシンプルに見せる
-  if (route.page === 'links') {
-    return <main className="min-h-screen">{page}</main>
+  // トップページとSNS用ページは、ヘッダー・フッターなしのシンプルなデザインで見せる
+  if (route.page === 'home' || route.page === 'links') {
+    return (
+      <>
+        <main className="min-h-screen">{page}</main>
+        <CartDrawer open={cartOpen} onClose={closeCart} cart={cart} />
+      </>
+    )
   }
 
   return (
