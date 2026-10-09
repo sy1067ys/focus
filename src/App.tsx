@@ -167,8 +167,15 @@ function useCart() {
 
 // ─── アイコン ─────────────────────────────────────────────────
 
-function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus' | 'minus' | 'arrow'; className?: string }) {
+function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus' | 'minus' | 'arrow' | 'bag'; className?: string }) {
   const paths: Record<string, ReactNode> = {
+    // ショッピングバッグ（カート）
+    bag: (
+      <>
+        <path d="M4.5 8.5h15l-1.2 12h-12.6z" />
+        <path d="M8.5 8.5V6.5a3.5 3.5 0 0 1 7 0v2" />
+      </>
+    ),
     menu: (
       <>
         <line x1="3" y1="8" x2="21" y2="8" />
@@ -232,6 +239,24 @@ function Mark({ className = '', label }: { className?: string; label?: string })
       className={`block h-auto select-none ${className}`}
       draggable={false}
     />
+  )
+}
+
+// カートのボタン（バッグの絵＋点数の丸いバッジ）
+function CartButton({ count, onClick, className = '' }: { count: number; onClick: () => void; className?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={count > 0 ? `カートを開く（${count}点）` : 'カートを開く（空）'}
+      className={`relative inline-flex items-center justify-center ${className}`}
+    >
+      <Icon name="bag" className="h-[22px] w-[22px]" />
+      {count > 0 && (
+        <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] leading-none tabular-nums text-paper">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -506,9 +531,7 @@ function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: nu
             </a>
           ))}
           <span className="h-3.5 w-px bg-line" aria-hidden="true" />
-          <button onClick={onOpenCart} className="tracking-wide">
-            Cart <span className="tabular-nums">({cartCount})</span>
-          </button>
+          <CartButton count={cartCount} onClick={onOpenCart} className="-m-1.5 p-1.5" />
         </nav>
       </div>
     </header>
@@ -746,9 +769,9 @@ function LinksPage({ cartCount, onOpenCart }: { cartCount: number; onOpenCart: (
     <div className="mx-auto w-full max-w-[460px] px-5 pb-16 pt-12 md:pt-20">
       {/* カートに商品があるときだけ、右上にカートを表示 */}
       {cartCount > 0 && (
-        <button onClick={onOpenCart} className="fixed right-4 top-4 z-30 border border-ink bg-paper px-4 py-2 text-[12px] tracking-wide md:right-8 md:top-6">
-          Cart <span className="tabular-nums">({cartCount})</span>
-        </button>
+        <div className="fixed right-4 top-4 z-30 md:right-8 md:top-6">
+          <CartButton count={cartCount} onClick={onOpenCart} className="h-11 w-11 border border-line bg-paper" />
+        </div>
       )}
 
       {/* ブランド */}
@@ -886,8 +909,10 @@ function CartDrawer({
         }`}
       >
         <div className="flex h-14 items-center justify-between border-b border-line px-5 md:h-16">
-          <p className="text-[13px] tracking-wide">
-            Cart <span className="tabular-nums">({cart.count})</span>
+          <p className="flex items-center gap-2 text-[14px] tracking-wide">
+            <Icon name="bag" className="h-5 w-5" />
+            カート
+            <span className="text-[12px] text-mute tabular-nums">{cart.count}点</span>
           </p>
           <button onClick={onClose} className="-mr-2 p-2" aria-label="カートを閉じる">
             <Icon name="close" />
@@ -896,7 +921,7 @@ function CartDrawer({
 
         {lines.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-8 px-5">
-            <Mark className="w-14 opacity-25" />
+            <Icon name="bag" className="h-14 w-14 text-line" />
             <p className="text-[14px] text-mute">カートに商品はありません</p>
             <a href="#/shop" onClick={onClose} className="border border-ink px-8 py-3 text-[13px] tracking-wide">
               商品を見る
