@@ -626,7 +626,7 @@ function HomePage({ category }: { category: Category | null }) {
         <div className="flex flex-col items-center text-center">
           <Mark className="w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
           <Logo className="mt-6 w-[180px]" />
-          <h1 className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</h1>
+          <h1 className="mt-12 text-[20px] font-light tracking-[-0.01em] md:mt-14">{CONCEPT.replace('\n', ' ')}</h1>
           <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
         </div>
       </section>
