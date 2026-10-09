@@ -487,8 +487,8 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
 // ─── ナビゲーション（画面上部に固定） ───────────────────────
 
 const NAV_ITEMS: { href: string; label: string; section: SectionId }[] = [
-  { href: '#/shop', label: 'Shop', section: 'shop' },
   { href: '#/about', label: 'About', section: 'about' },
+  { href: '#/shop', label: 'Shop', section: 'shop' },
   { href: '#/guide', label: 'Guide', section: 'guide' },
   { href: '#/info', label: 'Info', section: 'info' },
 ]
@@ -630,10 +630,23 @@ function HomePage({ category }: { category: Category | null }) {
           <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
         </div>
         <nav className="mt-10 space-y-3" aria-label="ページ内の移動">
-          <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
           <LinkRow href="#/about" title="About" sub="ブランドについて" />
+          <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
           <LinkRow href="#/guide" title="Guide" sub="送料・返品・サイズガイド" />
         </nav>
+      </section>
+
+      {/* ブランドについて */}
+      <section id="about" className="mx-auto mt-28 w-full max-w-[560px] scroll-mt-20 px-5">
+        <SectionHeading eyebrow="About" title="ブランドについて" />
+        <p className="mt-8 text-center text-[20px] font-light leading-[1.6]">
+          <Lines text={SHOP.about.lead} />
+        </p>
+        <div className="mt-8 space-y-5 text-[14px] leading-[2.1]">
+          {SHOP.about.paragraphs.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </div>
       </section>
 
       {/* オンラインストア */}
@@ -664,19 +677,6 @@ function HomePage({ category }: { category: Category | null }) {
           ) : (
             <p className="py-20 text-center text-[14px] text-mute">このカテゴリの商品は準備中です。</p>
           )}
-        </div>
-      </section>
-
-      {/* ブランドについて */}
-      <section id="about" className="mx-auto mt-28 w-full max-w-[560px] scroll-mt-20 px-5">
-        <SectionHeading eyebrow="About" title="ブランドについて" />
-        <p className="mt-8 text-center text-[20px] font-light leading-[1.6]">
-          <Lines text={SHOP.about.lead} />
-        </p>
-        <div className="mt-8 space-y-5 text-[14px] leading-[2.1]">
-          {SHOP.about.paragraphs.map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
         </div>
       </section>
 
