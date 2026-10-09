@@ -14,6 +14,14 @@ const siteConfiguration: FigmaSiteConfiguration = {
   accessibility: {
     addBypassLinks: false,
   },
+  // ブラウザのタブに表示されるアイコン（public フォルダの画像）
+  icons: {
+    icon: '/favicon.png',
+  },
+  customScripts: {
+    // iPhoneのホーム画面に追加したときのアイコン
+    headEnd: '<link rel="apple-touch-icon" href="/apple-touch-icon.png">',
+  },
 }
 
 
