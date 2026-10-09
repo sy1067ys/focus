@@ -6,7 +6,7 @@ import { logoImg, markImg } from './brand-assets'
 // ─── 共通 ─────────────────────────────────────────────────────
 
 // ブランドのコンセプト（トップページの一番大きな見出し。\n の位置で改行します）
-const CONCEPT = '人生に\n焦点を。'
+const CONCEPT = '人生に\n集点を。'
 
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`
 const findProduct = (id: string) => PRODUCTS.find(p => p.id === id)
