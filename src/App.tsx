@@ -6,7 +6,7 @@ import { logoImg, markImg } from './brand-assets'
 // ─── 共通 ─────────────────────────────────────────────────────
 
 // ブランドのコンセプト（トップページの一番大きな見出し。\n の位置で改行します）
-const CONCEPT = '人生に\n焦点を。'
+const CONCEPT = 'Focus point\non life.'
 
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`
 const findProduct = (id: string) => PRODUCTS.find(p => p.id === id)
@@ -71,7 +71,7 @@ function useRoute() {
 function pageTitle(route: Route): string {
   switch (route.page) {
     case 'home':
-      return `${SHOP.brandName} | ${CONCEPT.replace('\n', '')}`
+      return `${SHOP.brandName} | ${CONCEPT.replace('\n', ' ')}`
     case 'shop':
       return `${route.category ? CATEGORY_LABELS[route.category] : 'すべての商品'} | ${SHOP.brandName}`
     case 'product':
@@ -339,7 +339,7 @@ function Footer() {
         <div className="flex items-start gap-5 md:col-span-5">
           <Mark className="w-12 md:w-14" />
           <div className="pt-1">
-            <p className="text-[15px]">{CONCEPT.replace('\n', '')}</p>
+            <p className="text-[15px]">{CONCEPT.replace('\n', ' ')}</p>
             <p className="mt-2 text-[12px] leading-relaxed text-mute">{SHOP.tagline}</p>
           </div>
         </div>
@@ -411,7 +411,7 @@ function HomePage() {
         <Container className="grid gap-8 pt-8 md:grid-cols-12 md:gap-8 md:pt-8">
           <div className="flex flex-col justify-end md:col-span-5 md:justify-center md:py-8">
             <Eyebrow>{SHOP.hero.season}</Eyebrow>
-            <h1 className="mt-6 text-[56px] font-light leading-[1.2] tracking-[0.02em] md:text-[clamp(64px,6.4vw,104px)]">
+            <h1 className="mt-6 text-[54px] font-light leading-[1.02] tracking-[-0.035em] md:text-[clamp(60px,5.8vw,96px)]">
               <Lines text={CONCEPT} />
             </h1>
             <p className="mt-5 flex items-center gap-3 text-[13px] tracking-[0.12em] md:mt-6 md:text-[14px]">
