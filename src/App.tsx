@@ -632,7 +632,7 @@ function HomePage({ category }: { category: Category | null }) {
       </section>
 
       {/* ブランドについて */}
-      <section id="about" className="mx-auto mt-28 w-full max-w-[560px] scroll-mt-20 px-5">
+      <section id="about" className="mx-auto mt-44 w-full max-w-[560px] scroll-mt-20 px-5 md:mt-60">
         <SectionHeading eyebrow="About" title="ブランドについて" />
         <p className="mt-8 text-center text-[20px] font-light leading-[1.6]">
           <Lines text={SHOP.about.lead} />
