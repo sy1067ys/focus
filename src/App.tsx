@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { PRODUCTS, CATEGORIES, CATEGORY_LABELS, type Category, type Product } from './products'
 import { SHOP } from './shop-config'
+import logoImg from './assets/focus-logo.svg'
+import markImg from './assets/focus-mark.png'
 
 // ─── 共通 ─────────────────────────────────────────────────────
 
@@ -191,6 +193,24 @@ function ArrowLink({ href, children }: { href: string; children: ReactNode }) {
   )
 }
 
+// ロゴタイプ（横長の「FOCUS」）
+function Logo({ className = '' }: { className?: string }) {
+  return <img src={logoImg} alt={SHOP.brandName} className={`block h-auto select-none ${className}`} draggable={false} />
+}
+
+// シンボルマーク（照準の「O」）
+function Mark({ className = '', label }: { className?: string; label?: string }) {
+  return (
+    <img
+      src={markImg}
+      alt={label ?? ''}
+      aria-hidden={label ? undefined : true}
+      className={`block h-auto select-none ${className}`}
+      draggable={false}
+    />
+  )
+}
+
 function Eyebrow({ children }: { children: ReactNode }) {
   return <p className="text-[11px] uppercase tracking-[0.2em] text-mute">{children}</p>
 }
@@ -280,8 +300,8 @@ function Header({ route, cartCount, onOpenCart }: { route: Route; cartCount: num
               ))}
             </nav>
           </div>
-          <a href="#/" className="justify-self-center pl-[0.4em] text-[15px] font-medium tracking-[0.4em] md:text-[17px]">
-            {SHOP.brandName}
+          <a href="#/" className="justify-self-center" aria-label={`${SHOP.brandName} トップページ`}>
+            <Logo className="w-[104px] md:w-[132px]" />
           </a>
           <button onClick={onOpenCart} className="-mr-2 justify-self-end p-2 text-[13px] tracking-wide">
             Cart <span className="tabular-nums">({cartCount})</span>
@@ -310,9 +330,12 @@ function Footer() {
   return (
     <footer className="mt-24 border-t border-line md:mt-32">
       <Container className="grid gap-12 py-14 md:grid-cols-12 md:py-20">
-        <div className="md:col-span-5">
-          <p className="pl-[0.4em] text-[17px] font-medium tracking-[0.4em]">{SHOP.brandName}</p>
-          <p className="mt-4 text-[13px] text-mute">{SHOP.tagline}</p>
+        <div className="flex items-start gap-5 md:col-span-5">
+          <Mark className="w-12 md:w-14" />
+          <div className="pt-1">
+            <p className="text-[13px]">{SHOP.tagline}</p>
+            <p className="mt-2 text-[12px] leading-relaxed text-mute">東京発のアパレルブランド</p>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-8 text-[13px] md:col-span-7 md:grid-cols-3">
           <div>
@@ -358,8 +381,12 @@ function Footer() {
           </div>
         </div>
       </Container>
-      <Container className="border-t border-line py-6 text-[11px] text-mute">
-        © {new Date().getFullYear()} {SHOP.brandName}
+      <Container className="pb-4 md:pb-6">
+        <Logo className="w-full" />
+      </Container>
+      <Container className="flex justify-between border-t border-line py-6 text-[11px] text-mute">
+        <span>© {new Date().getFullYear()} {SHOP.brandName}</span>
+        <a href="#/legal" className="hover:text-ink">特定商取引法に基づく表記</a>
       </Container>
     </footer>
   )
@@ -416,6 +443,7 @@ function HomePage() {
             </div>
           </div>
           <div className="md:col-span-5 md:col-start-8">
+            <Mark className="mb-8 w-12 md:mb-10 md:w-16" />
             <Eyebrow>Philosophy</Eyebrow>
             <p className="mt-5 text-[26px] font-light leading-[1.5] md:text-[32px]">
               <Lines text={SHOP.philosophy.title} />
@@ -714,14 +742,19 @@ function AboutPage() {
           <img src={SHOP.about.image} alt="" className="h-full w-full object-cover" />
         </div>
       </Container>
-      <Container className="mt-12 md:mt-20">
-        <div className="space-y-6 text-[15px] leading-[2.1] md:ml-[calc(100%*5/12)] md:max-w-xl">
-          {SHOP.about.paragraphs.map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
+      <Container className="mt-12 grid gap-10 md:mt-20 md:grid-cols-12 md:gap-8">
+        <div className="md:col-span-4">
+          <Mark className="w-16 md:sticky md:top-28 md:w-[min(220px,70%)]" label={`${SHOP.brandName} シンボルマーク`} />
         </div>
-        <div className="mt-12 md:ml-[calc(100%*5/12)]">
-          <ArrowLink href="#/shop">コレクションを見る</ArrowLink>
+        <div className="md:col-span-6 md:col-start-6">
+          <div className="space-y-6 text-[15px] leading-[2.1]">
+            {SHOP.about.paragraphs.map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+          </div>
+          <div className="mt-12">
+            <ArrowLink href="#/shop">コレクションを見る</ArrowLink>
+          </div>
         </div>
       </Container>
     </>
@@ -812,7 +845,8 @@ function PrivacyPage() {
 
 function NotFoundPage() {
   return (
-    <Container className="py-32 text-center">
+    <Container className="flex flex-col items-center py-28 text-center">
+      <Mark className="mb-8 w-16" />
       <p className="text-[40px] font-light">404</p>
       <p className="mt-4 text-[14px] text-mute">お探しのページは見つかりませんでした。</p>
       <div className="mt-10">
@@ -887,6 +921,7 @@ function CartDrawer({
 
         {lines.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-8 px-5">
+            <Mark className="w-14 opacity-25" />
             <p className="text-[14px] text-mute">カートに商品はありません</p>
             <a href="#/shop" onClick={onClose} className="border border-ink px-8 py-3 text-[13px] tracking-wide">
               商品を見る
