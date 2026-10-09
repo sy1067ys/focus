@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { PRODUCTS, CATEGORIES, CATEGORY_LABELS, type Category, type Product } from './products'
 import { SHOP } from './shop-config'
-import logoImg from './assets/focus-logo.svg'
-import markImg from './assets/focus-mark.png'
+import { logoImg, markImg } from './brand-assets'
 
 // ─── 共通 ─────────────────────────────────────────────────────
 
