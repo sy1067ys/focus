@@ -627,7 +627,8 @@ function HomePage({ category }: { category: Category | null }) {
           {/* シンボルマーク（特大）＋ FOCUS の文字 */}
           {/* 左に大きなマーク、右にFOCUSの文字 */}
           <div className="flex w-full items-center justify-center gap-5 sm:gap-8 md:gap-12">
-            <Mark className="w-[40%] max-w-[380px] shrink-0 md:w-[34%]" label={`${SHOP.brandName} シンボルマーク`} />
+            {/* マークだけを左へずらす（FOCUSの文字の位置はそのまま） */}
+            <Mark className="w-[40%] max-w-[380px] shrink-0 -translate-x-2 md:w-[34%] lg:-translate-x-10 xl:-translate-x-[104px]" label={`${SHOP.brandName} シンボルマーク`} />
             {/* FOCUSの文字（大きさの上限：スマホ160px／タブレット400px／PC 500px） */}
             <div className="min-w-0 max-w-[160px] flex-1 sm:max-w-[260px] md:max-w-[400px] lg:max-w-[500px]">
               <Logo className="w-full" />
