@@ -625,10 +625,11 @@ function HomePage({ category }: { category: Category | null }) {
       <section id="top" className="mx-auto w-full max-w-[1200px] px-5 pt-28 md:px-8 md:pt-36">
         <div className="flex flex-col items-center text-center">
           {/* シンボルマーク（特大）＋ FOCUS の文字 */}
-          {/* 横幅いっぱいに使う：左にマーク、右の残りをFOCUSの文字で埋める */}
-          <div className="flex w-full items-center gap-5 sm:gap-8 md:gap-12">
-            <Mark className="w-[34%] max-w-[360px] shrink-0 md:w-[30%]" label={`${SHOP.brandName} シンボルマーク`} />
-            <div className="min-w-0 flex-1">
+          {/* 左に大きなマーク、右にFOCUSの文字 */}
+          <div className="flex w-full items-center justify-center gap-5 sm:gap-8 md:gap-12">
+            <Mark className="w-[40%] max-w-[380px] shrink-0 md:w-[34%]" label={`${SHOP.brandName} シンボルマーク`} />
+            {/* FOCUSの文字（大きさの上限：スマホ160px／タブレット400px／PC 500px） */}
+            <div className="min-w-0 max-w-[160px] flex-1 sm:max-w-[260px] md:max-w-[400px] lg:max-w-[500px]">
               <Logo className="w-full" />
             </div>
           </div>
