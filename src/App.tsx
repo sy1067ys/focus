@@ -622,12 +622,15 @@ function HomePage({ category }: { category: Category | null }) {
   return (
     <>
       {/* ブランド */}
-      <section id="top" className="mx-auto w-full max-w-[1040px] px-5 pt-32 md:pt-40">
+      <section id="top" className="mx-auto w-full max-w-[1200px] px-5 pt-28 md:px-8 md:pt-36">
         <div className="flex flex-col items-center text-center">
           {/* シンボルマーク（特大）＋ FOCUS の文字 */}
-          <div className="flex items-center justify-center gap-4 sm:gap-6 md:gap-10">
-            <Mark className="w-[96px] shrink-0 sm:w-[130px] md:w-[170px] lg:w-[220px]" label={`${SHOP.brandName} シンボルマーク`} />
-            <Logo className="w-[190px] shrink-0 sm:w-[260px] md:w-[360px] lg:w-[460px]" />
+          {/* 横幅いっぱいに使う：左にマーク、右の残りをFOCUSの文字で埋める */}
+          <div className="flex w-full items-center gap-5 sm:gap-8 md:gap-12">
+            <Mark className="w-[34%] max-w-[360px] shrink-0 md:w-[30%]" label={`${SHOP.brandName} シンボルマーク`} />
+            <div className="min-w-0 flex-1">
+              <Logo className="w-full" />
+            </div>
           </div>
 
           {/* コンセプト */}
