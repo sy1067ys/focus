@@ -8,6 +8,15 @@ import { logoImg, markImg } from './brand-assets'
 // ブランドのコンセプト（トップページの一番大きな見出し。\n の位置で改行します）
 const CONCEPT = 'Focus point\non life.'
 
+// ブランドのSNS（URLを入れたものだけが SNS用ページとフッターに表示されます）
+const SOCIAL_LINKS: { label: string; handle: string; url: string }[] = [
+  { label: 'Instagram', handle: '@focus', url: SHOP.instagramUrl },
+  { label: 'X', handle: '@focus', url: '' },
+  { label: 'TikTok', handle: '@focus', url: '' },
+  { label: 'LINE', handle: '公式アカウント', url: '' },
+]
+const ACTIVE_SOCIALS = SOCIAL_LINKS.filter(s => s.url)
+
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`
 const findProduct = (id: string) => PRODUCTS.find(p => p.id === id)
 
@@ -37,6 +46,7 @@ type Route =
   | { page: 'guide' }
   | { page: 'legal' }
   | { page: 'privacy' }
+  | { page: 'links' }
   | { page: 'notfound' }
 
 function parseHash(): Route {
@@ -52,6 +62,7 @@ function parseHash(): Route {
   if (first === 'guide') return { page: 'guide' }
   if (first === 'legal') return { page: 'legal' }
   if (first === 'privacy') return { page: 'privacy' }
+  if (first === 'links') return { page: 'links' }
   return { page: 'notfound' }
 }
 
@@ -84,6 +95,8 @@ function pageTitle(route: Route): string {
       return `特定商取引法に基づく表記 | ${SHOP.brandName}`
     case 'privacy':
       return `プライバシーポリシー | ${SHOP.brandName}`
+    case 'links':
+      return `${SHOP.brandName} | Official links`
     default:
       return `ページが見つかりません | ${SHOP.brandName}`
   }
@@ -376,13 +389,16 @@ function Footer() {
                   {SHOP.contactEmail}
                 </a>
               </li>
-              {SHOP.instagramUrl && (
-                <li>
-                  <a href={SHOP.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-mute">
-                    Instagram
+              {ACTIVE_SOCIALS.map(s => (
+                <li key={s.label}>
+                  <a href={s.url} target="_blank" rel="noreferrer" className="hover:text-mute">
+                    {s.label}
                   </a>
                 </li>
-              )}
+              ))}
+              <li>
+                <a href="#/links" className="hover:text-mute">公式リンク集</a>
+              </li>
             </ul>
           </div>
         </div>
@@ -854,6 +870,112 @@ function PrivacyPage() {
   )
 }
 
+// ─── SNS用ページ（プロフィールに貼るリンク集） ───────────────
+// URL: https://（サイトのドメイン）/#/links
+
+function LinkRow({ href, title, sub, external }: { href: string; title: string; sub: string; external?: boolean }) {
+  return (
+    <a
+      href={href}
+      {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+      className="group flex items-center justify-between border border-ink px-5 py-4 transition-colors hover:bg-ink hover:text-paper"
+    >
+      <span>
+        <span className="block text-[14px] tracking-wide">{title}</span>
+        <span className="mt-0.5 block text-[11px] text-mute transition-colors group-hover:text-paper/70">{sub}</span>
+      </span>
+      <Icon name="arrow" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
+    </a>
+  )
+}
+
+function LinksPage() {
+  const [copied, setCopied] = useState(false)
+  // 新作を優先して並べ、3の倍数（最大6枚）にそろえて並びに隙間ができないようにする
+  const sorted = [...PRODUCTS.filter(p => p.isNew), ...PRODUCTS.filter(p => !p.isNew)]
+  const latest = sorted.slice(0, Math.min(6, Math.max(3, Math.floor(sorted.length / 3) * 3)))
+
+  const copyLink = async () => {
+    const url = window.location.href
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = url
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      el.remove()
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-[460px] px-5 pb-16 pt-12 md:pt-20">
+      {/* ブランド */}
+      <div className="flex flex-col items-center text-center">
+        <Mark className="w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
+        <Logo className="mt-6 w-[180px]" />
+        <p className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</p>
+        <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
+      </div>
+
+      {/* リンク */}
+      <nav className="mt-10 space-y-3" aria-label="公式リンク">
+        <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
+        <LinkRow href="#/" title="Website" sub="公式サイト" />
+        <LinkRow href="#/about" title="About" sub="ブランドについて" />
+        <LinkRow href="#/guide" title="Guide" sub="送料・返品・サイズガイド" />
+      </nav>
+
+      {/* 新作（SNSのような正方形のタイル） */}
+      <section className="mt-12">
+        <div className="mb-4 flex items-end justify-between">
+          <Eyebrow>New arrivals</Eyebrow>
+          <a href="#/shop" className="text-[11px] text-mute underline underline-offset-4 hover:text-ink">すべて見る</a>
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          {latest.map(p => (
+            <a key={p.id} href={`#/product/${p.id}`} className="group relative block aspect-square overflow-hidden bg-stone" aria-label={`${p.nameJa} ${yen(p.price)}`}>
+              <img src={p.images[0]} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <span className="absolute inset-x-0 bottom-0 bg-ink/70 px-2 py-1 text-[10px] tabular-nums text-paper opacity-0 transition-opacity group-hover:opacity-100">
+                {yen(p.price)}
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      {/* SNS */}
+      {ACTIVE_SOCIALS.length > 0 && (
+        <section className="mt-12">
+          <Eyebrow>Follow</Eyebrow>
+          <div className="mt-4 space-y-3">
+            {ACTIVE_SOCIALS.map(s => (
+              <LinkRow key={s.label} href={s.url} title={s.label} sub={s.handle} external />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* お問い合わせ・共有 */}
+      <section className="mt-12 border-t border-line pt-8 text-center">
+        <p className="text-[12px] text-mute">お問い合わせ</p>
+        <a href={`mailto:${SHOP.contactEmail}`} className="mt-1 inline-block text-[14px] underline underline-offset-4">
+          {SHOP.contactEmail}
+        </a>
+        <div className="mt-8">
+          <button onClick={copyLink} className="border border-line px-5 py-2.5 text-[12px] tracking-wide transition-colors hover:border-ink">
+            {copied ? 'リンクをコピーしました' : 'このページのリンクをコピー'}
+          </button>
+        </div>
+        <p className="mt-10 text-[11px] text-mute">© {new Date().getFullYear()} {SHOP.brandName}</p>
+      </section>
+    </div>
+  )
+}
+
 function NotFoundPage() {
   return (
     <Container className="flex flex-col items-center py-28 text-center">
@@ -1074,8 +1196,16 @@ export default function App() {
     case 'privacy':
       page = <PrivacyPage />
       break
+    case 'links':
+      page = <LinksPage />
+      break
     default:
       page = <NotFoundPage />
+  }
+
+  // SNS用ページはリンク集だけをシンプルに見せる
+  if (route.page === 'links') {
+    return <main className="min-h-screen">{page}</main>
   }
 
   return (
