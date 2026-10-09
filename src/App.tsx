@@ -35,33 +35,34 @@ function Lines({ text }: { text: string }) {
   )
 }
 
-// ─── ページの切り替え（URLの # 以降でページを判定） ─────────────
-// 例: #/shop  #/shop/outerwear  #/product/cashmere-rollneck  #/about
+// ─── ページの切り替え ─────────────────────────────────────────
+// トップページは1枚のページで、#/shop #/about #/guide #/info で各セクションへ移動します。
+// 商品の詳細だけは別画面（#/product/商品ID）です。
+
+const SECTIONS = ['top', 'shop', 'about', 'guide', 'info'] as const
+type SectionId = (typeof SECTIONS)[number]
 
 type Route =
-  | { page: 'home' }
-  | { page: 'shop'; category: Category | null }
+  | { page: 'home'; section: SectionId; category: Category | null; open: 'legal' | 'privacy' | null }
   | { page: 'product'; id: string }
-  | { page: 'about' }
-  | { page: 'guide' }
-  | { page: 'legal' }
-  | { page: 'privacy' }
   | { page: 'links' }
   | { page: 'notfound' }
 
+function homeRoute(section: SectionId, category: Category | null = null, open: 'legal' | 'privacy' | null = null): Route {
+  return { page: 'home', section, category, open }
+}
+
 function parseHash(): Route {
   const [first, second] = window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
-  if (!first) return { page: 'home' }
+  if (!first) return homeRoute('top')
   if (first === 'shop') {
-    if (!second) return { page: 'shop', category: null }
+    if (!second) return homeRoute('shop')
     const category = CATEGORIES.find(c => c.toLowerCase() === second.toLowerCase())
-    return category ? { page: 'shop', category } : { page: 'notfound' }
+    return category ? homeRoute('shop', category) : { page: 'notfound' }
   }
+  if (first === 'about' || first === 'guide' || first === 'info') return homeRoute(first)
+  if (first === 'legal' || first === 'privacy') return homeRoute('info', null, first)
   if (first === 'product' && second) return { page: 'product', id: decodeURIComponent(second) }
-  if (first === 'about') return { page: 'about' }
-  if (first === 'guide') return { page: 'guide' }
-  if (first === 'legal') return { page: 'legal' }
-  if (first === 'privacy') return { page: 'privacy' }
   if (first === 'links') return { page: 'links' }
   return { page: 'notfound' }
 }
@@ -69,32 +70,40 @@ function parseHash(): Route {
 function useRoute() {
   const [route, setRoute] = useState<Route>(parseHash)
   useEffect(() => {
-    const onChange = () => {
-      setRoute(parseHash())
-      window.scrollTo(0, 0)
+    const onChange = () => setRoute(parseHash())
+    // 今いる場所と同じリンクを押したときも、もう一度そのセクションへ移動する
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.('a')
+      const href = a?.getAttribute('href')
+      if (href && href.startsWith('#') && href === (window.location.hash || '#/')) {
+        e.preventDefault()
+        onChange()
+      }
     }
     window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
+    document.addEventListener('click', onClick)
+    return () => {
+      window.removeEventListener('hashchange', onChange)
+      document.removeEventListener('click', onClick)
+    }
   }, [])
   return route
 }
 
 function pageTitle(route: Route): string {
   switch (route.page) {
-    case 'home':
-      return `${SHOP.brandName} | ${CONCEPT.replace('\n', ' ')}`
-    case 'shop':
-      return `${route.category ? CATEGORY_LABELS[route.category] : 'すべての商品'} | ${SHOP.brandName}`
+    case 'home': {
+      const label: Record<SectionId, string> = {
+        top: CONCEPT.replace('\n', ' '),
+        shop: route.category ? CATEGORY_LABELS[route.category] : 'Online store',
+        about: 'About',
+        guide: 'ご利用ガイド',
+        info: route.open === 'legal' ? '特定商取引法に基づく表記' : route.open === 'privacy' ? 'プライバシーポリシー' : 'Info',
+      }
+      return `${SHOP.brandName} | ${label[route.section]}`
+    }
     case 'product':
       return `${findProduct(route.id)?.nameJa ?? '商品が見つかりません'} | ${SHOP.brandName}`
-    case 'about':
-      return `About | ${SHOP.brandName}`
-    case 'guide':
-      return `ご利用ガイド | ${SHOP.brandName}`
-    case 'legal':
-      return `特定商取引法に基づく表記 | ${SHOP.brandName}`
-    case 'privacy':
-      return `プライバシーポリシー | ${SHOP.brandName}`
     case 'links':
       return `${SHOP.brandName} | Official links`
     default:
@@ -275,188 +284,6 @@ function ProductGrid({ products }: { products: Product[] }) {
   )
 }
 
-// ─── ヘッダー ─────────────────────────────────────────────────
-
-const NAV_LINKS = [
-  { href: '#/shop', label: 'Shop', page: 'shop' },
-  { href: '#/about', label: 'About', page: 'about' },
-  { href: '#/guide', label: 'Guide', page: 'guide' },
-]
-
-function Header({ route, cartCount, onOpenCart }: { route: Route; cartCount: number; onOpenCart: () => void }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  useEffect(() => setMenuOpen(false), [route])
-
-  return (
-    <>
-      <div className="bg-ink py-2 text-center text-[11px] tracking-[0.08em] text-paper">{SHOP.announcement}</div>
-      <header className="sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur">
-        <Container className="flex h-16 items-center justify-between gap-6 md:h-20">
-          {/* 左：ロゴ */}
-          <a href="#/" className="shrink-0" aria-label={`${SHOP.brandName} トップページ`}>
-            <Logo className="w-[136px] md:w-[200px]" />
-          </a>
-
-          {/* 右：ナビゲーションとカート */}
-          <div className="flex items-center gap-1 md:gap-10">
-            <nav className="hidden gap-8 text-[13px] tracking-wide md:flex">
-              {NAV_LINKS.map(link => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={`border-b pb-0.5 transition-colors ${
-                    route.page === link.page ? 'border-ink' : 'border-transparent text-mute hover:text-ink'
-                  }`}
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-            <span className="hidden h-4 w-px bg-line md:block" aria-hidden="true" />
-            <button onClick={onOpenCart} className="p-2 text-[13px] tracking-wide md:-mr-2">
-              Cart <span className="tabular-nums">({cartCount})</span>
-            </button>
-            <button
-              className="-mr-2 p-2 md:hidden"
-              aria-label={menuOpen ? 'メニューを閉じる' : 'メニューを開く'}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(o => !o)}
-            >
-              <Icon name={menuOpen ? 'close' : 'menu'} />
-            </button>
-          </div>
-        </Container>
-
-        {menuOpen && (
-          <nav className="border-t border-line md:hidden">
-            <Container className="flex flex-col py-4">
-              {[{ href: '#/', label: 'Home' }, ...NAV_LINKS].map(link => (
-                <a key={link.href} href={link.href} className="border-b border-line py-4 text-[22px] font-light last:border-0">
-                  {link.label}
-                </a>
-              ))}
-            </Container>
-          </nav>
-        )}
-      </header>
-    </>
-  )
-}
-
-// ─── フッター ─────────────────────────────────────────────────
-
-function Footer() {
-  return (
-    <footer className="mt-24 border-t border-line md:mt-32">
-      <Container className="grid gap-12 py-14 md:grid-cols-12 md:py-20">
-        <div className="flex items-start gap-5 md:col-span-5">
-          <Mark className="w-12 md:w-14" />
-          <div className="pt-1">
-            <p className="text-[15px]">{CONCEPT.replace('\n', ' ')}</p>
-            <p className="mt-2 text-[12px] leading-relaxed text-mute">{SHOP.tagline}</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-8 text-[13px] md:col-span-7 md:grid-cols-3">
-          <div>
-            <Eyebrow>Shop</Eyebrow>
-            <ul className="mt-4 space-y-3">
-              <li>
-                <a href="#/shop" className="hover:text-mute">すべての商品</a>
-              </li>
-              {CATEGORIES.map(c => (
-                <li key={c}>
-                  <a href={`#/shop/${c.toLowerCase()}`} className="hover:text-mute">
-                    {CATEGORY_LABELS[c]}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <Eyebrow>Info</Eyebrow>
-            <ul className="mt-4 space-y-3">
-              <li><a href="#/about" className="hover:text-mute">ブランドについて</a></li>
-              <li><a href="#/guide" className="hover:text-mute">ご利用ガイド</a></li>
-              <li><a href="#/legal" className="hover:text-mute">特定商取引法に基づく表記</a></li>
-              <li><a href="#/privacy" className="hover:text-mute">プライバシーポリシー</a></li>
-            </ul>
-          </div>
-          <div>
-            <Eyebrow>Contact</Eyebrow>
-            <ul className="mt-4 space-y-3">
-              <li>
-                <a href={`mailto:${SHOP.contactEmail}`} className="break-all hover:text-mute">
-                  {SHOP.contactEmail}
-                </a>
-              </li>
-              {ACTIVE_SOCIALS.map(s => (
-                <li key={s.label}>
-                  <a href={s.url} target="_blank" rel="noreferrer" className="hover:text-mute">
-                    {s.label}
-                  </a>
-                </li>
-              ))}
-              <li>
-                <a href="#/links" className="hover:text-mute">公式リンク集</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </Container>
-      <Container className="pb-4 md:pb-6">
-        <Logo className="w-full" />
-      </Container>
-      <Container className="flex justify-between border-t border-line py-6 text-[11px] text-mute">
-        <span>© {new Date().getFullYear()} {SHOP.brandName}</span>
-        <a href="#/legal" className="hover:text-ink">特定商取引法に基づく表記</a>
-      </Container>
-    </footer>
-  )
-}
-
-// ─── 商品一覧 ─────────────────────────────────────────────────
-
-function ShopPage({ category }: { category: Category | null }) {
-  const list = category ? PRODUCTS.filter(p => p.category === category) : PRODUCTS
-  const filters: { href: string; label: string; active: boolean }[] = [
-    { href: '#/shop', label: 'All', active: !category },
-    ...CATEGORIES.map(c => ({ href: `#/shop/${c.toLowerCase()}`, label: c, active: category === c })),
-  ]
-
-  return (
-    <Container className="pt-10 md:pt-16">
-      <Eyebrow>{category ? CATEGORY_LABELS[category] : 'すべての商品'}</Eyebrow>
-      <h1 className="mt-3 text-[36px] font-light tracking-[-0.02em] md:text-[56px]">{category ?? 'All items'}</h1>
-
-      <div className="mt-8 flex items-center justify-between gap-6 border-y border-line md:mt-10">
-        <nav className="no-scrollbar -mx-4 flex gap-6 overflow-x-auto px-4 md:mx-0 md:px-0" aria-label="カテゴリ">
-          {filters.map(f => (
-            <a
-              key={f.href}
-              href={f.href}
-              aria-current={f.active ? 'page' : undefined}
-              className={`shrink-0 border-b py-4 text-[13px] tracking-wide transition-colors ${
-                f.active ? 'border-ink' : 'border-transparent text-mute hover:text-ink'
-              }`}
-            >
-              {f.label}
-            </a>
-          ))}
-        </nav>
-        <p className="hidden shrink-0 text-[12px] text-mute tabular-nums md:block">{list.length} items</p>
-      </div>
-
-      <div className="mt-8 md:mt-12">
-        {list.length ? (
-          <ProductGrid products={list} />
-        ) : (
-          <p className="py-24 text-center text-[14px] text-mute">このカテゴリの商品は準備中です。</p>
-        )}
-      </div>
-    </Container>
-  )
-}
-
 // ─── 商品詳細 ─────────────────────────────────────────────────
 
 function Accordion({ title, children, defaultOpen }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
@@ -499,7 +326,7 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
 
   return (
     <>
-      <Container className="pt-4 md:pt-6">
+      <Container className="pt-20 md:pt-24">
         <nav className="flex flex-wrap gap-2 text-[11px] text-mute" aria-label="パンくずリスト">
           <a href="#/" className="hover:text-ink">Home</a>
           <span>/</span>
@@ -533,7 +360,7 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
 
         {/* 商品情報 */}
         <div className="md:col-span-5">
-          <div className="md:sticky md:top-24">
+          <div className="md:sticky md:top-20">
             <Eyebrow>{CATEGORY_LABELS[product.category]}</Eyebrow>
             <h1 className="mt-3 text-[26px] font-light leading-tight tracking-[-0.01em] md:text-[32px]">{product.name}</h1>
             <p className="mt-1 text-[13px] text-mute">{product.nameJa}</p>
@@ -632,147 +459,250 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
   )
 }
 
-// ─── その他のページ ───────────────────────────────────────────
+// ─── ナビゲーション（画面上部に固定） ───────────────────────
 
-function TextPage({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+const NAV_ITEMS: { href: string; label: string; section: SectionId }[] = [
+  { href: '#/shop', label: 'Shop', section: 'shop' },
+  { href: '#/about', label: 'About', section: 'about' },
+  { href: '#/guide', label: 'Guide', section: 'guide' },
+  { href: '#/info', label: 'Info', section: 'info' },
+]
+
+function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: number; onOpenCart: () => void }) {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 120)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  // トップの一番上では大きなマークが見えているので、ナビの小さなマークは隠す
+  const showMark = route.page !== 'home' || scrolled
+
   return (
-    <Container className="pt-10 md:pt-16">
-      <div className="mx-auto max-w-2xl">
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="mt-3 text-[28px] font-light tracking-[-0.01em] md:text-[40px]">{title}</h1>
-        <div className="mt-10 text-[14px] leading-[2]">{children}</div>
+    <header
+      className={`fixed inset-x-0 top-0 z-40 transition-colors duration-300 ${
+        scrolled || route.page !== 'home' ? 'border-b border-line bg-paper/90 backdrop-blur' : 'border-b border-transparent'
+      }`}
+    >
+      <div className="mx-auto flex h-14 w-full max-w-[1040px] items-center justify-between px-5">
+        <a
+          href="#/"
+          aria-label={`${SHOP.brandName} トップへ`}
+          className={`transition-opacity duration-300 ${showMark ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+        >
+          <Mark className="w-6" />
+        </a>
+        <nav className="flex items-center gap-4 text-[12px] tracking-wide md:gap-8 md:text-[13px]" aria-label="メインメニュー">
+          {NAV_ITEMS.map(item => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={`transition-colors ${
+                route.page === 'home' && route.section === item.section ? 'text-ink' : 'text-mute hover:text-ink'
+              }`}
+            >
+              {item.label}
+            </a>
+          ))}
+          <span className="h-3.5 w-px bg-line" aria-hidden="true" />
+          <button onClick={onOpenCart} className="tracking-wide">
+            Cart <span className="tabular-nums">({cartCount})</span>
+          </button>
+        </nav>
       </div>
-    </Container>
+    </header>
   )
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+// ─── INFO（ページの一番下。全画面共通） ─────────────────────
+
+function InfoSection({ open }: { open: 'legal' | 'privacy' | null }) {
+  const item = 'block w-full py-3 text-left text-[16px] transition-colors hover:text-mute'
   return (
-    <section className="border-t border-line py-8">
-      <h2 className="text-[15px] font-medium">{title}</h2>
-      <div className="mt-4 text-mute">{children}</div>
+    <section id="info" className="mx-auto mt-28 w-full max-w-[460px] scroll-mt-20 border-t border-line px-5 pb-16 pt-12">
+      <Eyebrow>Info</Eyebrow>
+      <ul className="mt-6">
+        <li><a href="#/about" className={item}>ブランドについて</a></li>
+        <li><a href="#/guide" className={item}>ご利用ガイド</a></li>
+        <li>
+          <details key={`legal-${open}`} open={open === 'legal'} className="scroll-mt-20">
+            <summary className={`${item} flex items-center justify-between`}>
+              特定商取引法に基づく表記
+              <Icon name="plus" className="accordion-icon h-4 w-4 transition-transform" />
+            </summary>
+            <dl className="mb-4 border-t border-line">
+              {SHOP.legal.map(([label, value]) => (
+                <div key={label} className="border-b border-line py-3">
+                  <dt className="text-[11px] text-mute">{label}</dt>
+                  <dd className="mt-0.5 text-[13px]">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </li>
+        <li>
+          <details key={`privacy-${open}`} open={open === 'privacy'} className="scroll-mt-20">
+            <summary className={`${item} flex items-center justify-between`}>
+              プライバシーポリシー
+              <Icon name="plus" className="accordion-icon h-4 w-4 transition-transform" />
+            </summary>
+            <div className="mb-4 space-y-3 border-t border-line pt-3 text-[13px] leading-[1.9] text-mute">
+              <p>{SHOP.brandName}（以下「当店」）は、お客様の個人情報を適切に取り扱い、保護することに努めます。</p>
+              <p>ご注文やお問い合わせの際に、お名前、住所、電話番号、メールアドレスなどの情報をお預かりします。お預かりした情報は、商品の発送、ご連絡、サービス向上のためにのみ利用します。</p>
+              <p>法令に基づく場合や、配送業者・決済事業者など業務の遂行に必要な場合を除き、お客様の同意なく第三者に提供することはありません。</p>
+              <p>個人情報の取り扱いに関するお問い合わせは {SHOP.contactEmail} までご連絡ください。</p>
+            </div>
+          </details>
+        </li>
+      </ul>
+
+      <div className="mt-10">
+        <Eyebrow>Contact</Eyebrow>
+        <a href={`mailto:${SHOP.contactEmail}`} className="mt-4 inline-block text-[16px] underline underline-offset-4">
+          {SHOP.contactEmail}
+        </a>
+        {ACTIVE_SOCIALS.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-[14px]">
+            {ACTIVE_SOCIALS.map(s => (
+              <a key={s.label} href={s.url} target="_blank" rel="noreferrer" className="hover:text-mute">
+                {s.label}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <p className="mt-14 text-center text-[11px] text-mute">© {new Date().getFullYear()} {SHOP.brandName}</p>
     </section>
   )
 }
 
-function AboutPage() {
+// ─── トップページ（1ページ構成） ─────────────────────────────
+
+function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
+  return (
+    <div className="text-center">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="mt-3 text-[26px] font-light tracking-[-0.01em] md:text-[32px]">{title}</h2>
+    </div>
+  )
+}
+
+function HomePage({ category }: { category: Category | null }) {
+  const list = category ? PRODUCTS.filter(p => p.category === category) : PRODUCTS
+  const filters = [
+    { href: '#/shop', label: 'All', active: !category },
+    ...CATEGORIES.map(c => ({ href: `#/shop/${c.toLowerCase()}`, label: c, active: category === c })),
+  ]
+
   return (
     <>
-      <Container className="pt-10 md:pt-16">
-        <Eyebrow>About</Eyebrow>
-        <h1 className="mt-5 text-[32px] font-light leading-[1.4] tracking-[-0.01em] md:text-[56px]">
+      {/* ブランド */}
+      <section id="top" className="mx-auto w-full max-w-[460px] px-5 pt-24 md:pt-28">
+        <div className="flex flex-col items-center text-center">
+          <Mark className="w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
+          <Logo className="mt-6 w-[180px]" />
+          <h1 className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</h1>
+          <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
+        </div>
+        <nav className="mt-10 space-y-3" aria-label="ページ内の移動">
+          <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
+          <LinkRow href="#/about" title="About" sub="ブランドについて" />
+          <LinkRow href="#/guide" title="Guide" sub="送料・返品・サイズガイド" />
+        </nav>
+      </section>
+
+      {/* オンラインストア */}
+      <section id="shop" className="mx-auto mt-28 w-full max-w-[1040px] scroll-mt-20 px-5">
+        <SectionHeading eyebrow="Online store" title="Collection" />
+        <p className="mt-3 text-center text-[12px] text-mute">{SHOP.announcement}</p>
+        <nav className="no-scrollbar -mx-5 mt-8 flex gap-6 overflow-x-auto border-y border-line px-5 md:mx-0 md:justify-center" aria-label="カテゴリ">
+          {filters.map(f => (
+            <a
+              key={f.href}
+              href={f.href}
+              aria-current={f.active ? 'page' : undefined}
+              className={`shrink-0 border-b py-4 text-[13px] tracking-wide transition-colors ${
+                f.active ? 'border-ink' : 'border-transparent text-mute hover:text-ink'
+              }`}
+            >
+              {f.label}
+            </a>
+          ))}
+        </nav>
+        <div className="mt-8 md:mt-10">
+          {list.length ? (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-10 md:grid-cols-3 md:gap-x-6 md:gap-y-14">
+              {list.map(p => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          ) : (
+            <p className="py-20 text-center text-[14px] text-mute">このカテゴリの商品は準備中です。</p>
+          )}
+        </div>
+      </section>
+
+      {/* ブランドについて */}
+      <section id="about" className="mx-auto mt-28 w-full max-w-[560px] scroll-mt-20 px-5">
+        <SectionHeading eyebrow="About" title="ブランドについて" />
+        <p className="mt-8 text-center text-[20px] font-light leading-[1.6]">
           <Lines text={SHOP.about.lead} />
-        </h1>
-      </Container>
-      <Container className="mt-10 md:mt-16">
-        <div className="aspect-[16/10] overflow-hidden bg-stone">
-          <img src={SHOP.about.image} alt="" className="h-full w-full object-cover" />
+        </p>
+        <div className="mt-8 space-y-5 text-[14px] leading-[2.1]">
+          {SHOP.about.paragraphs.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
         </div>
-      </Container>
-      <Container className="mt-12 grid gap-10 md:mt-20 md:grid-cols-12 md:gap-8">
-        <div className="md:col-span-4">
-          <Mark className="w-16 md:sticky md:top-28 md:w-[min(220px,70%)]" label={`${SHOP.brandName} シンボルマーク`} />
+      </section>
+
+      {/* ご利用ガイド */}
+      <section id="guide" className="mx-auto mt-28 w-full max-w-[560px] scroll-mt-20 px-5">
+        <SectionHeading eyebrow="Guide" title="ご利用ガイド" />
+        <div className="mt-8 border-t border-line">
+          <Accordion title="送料・配送" defaultOpen>
+            {SHOP.shippingNote}
+          </Accordion>
+          <Accordion title="返品・交換">{SHOP.returnsNote}</Accordion>
+          <Accordion title="サイズガイド">
+            <p>参考寸法（cm）です。商品によって異なる場合があります。</p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[360px] border-collapse text-left text-[13px] text-ink">
+                <thead>
+                  <tr className="border-b border-ink">
+                    {SHOP.sizeGuide.headers.map(h => (
+                      <th key={h} className="py-2 pr-3 font-normal">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {SHOP.sizeGuide.rows.map(row => (
+                    <tr key={row[0]} className="border-b border-line">
+                      {row.map((cell, i) => (
+                        <td key={i} className="py-2 pr-3 tabular-nums">{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Accordion>
+          <Accordion title="お問い合わせ">
+            ご不明な点は
+            <a href={`mailto:${SHOP.contactEmail}`} className="mx-1 text-ink underline underline-offset-4">
+              {SHOP.contactEmail}
+            </a>
+            までご連絡ください。
+          </Accordion>
         </div>
-        <div className="md:col-span-6 md:col-start-6">
-          <div className="space-y-6 text-[15px] leading-[2.1]">
-            {SHOP.about.paragraphs.map((p, i) => (
-              <p key={i}>{p}</p>
-            ))}
-          </div>
-          <div className="mt-12">
-            <ArrowLink href="#/shop">コレクションを見る</ArrowLink>
-          </div>
-        </div>
-      </Container>
+      </section>
     </>
   )
 }
 
-function GuidePage() {
-  return (
-    <TextPage eyebrow="Guide" title="ご利用ガイド">
-      <Section title="送料・配送">
-        <p>{SHOP.shippingNote}</p>
-      </Section>
-      <Section title="返品・交換">
-        <p>{SHOP.returnsNote}</p>
-      </Section>
-      <Section title="サイズガイド">
-        <p>参考寸法（cm）です。商品によって異なる場合があります。</p>
-        <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[420px] border-collapse text-left text-[13px] text-ink">
-            <thead>
-              <tr className="border-b border-ink">
-                {SHOP.sizeGuide.headers.map(h => (
-                  <th key={h} className="py-3 pr-4 font-normal">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {SHOP.sizeGuide.rows.map(row => (
-                <tr key={row[0]} className="border-b border-line">
-                  {row.map((cell, i) => (
-                    <td key={i} className="py-3 pr-4 tabular-nums">{cell}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
-      <Section title="お問い合わせ">
-        <p>
-          ご不明な点は
-          <a href={`mailto:${SHOP.contactEmail}`} className="mx-1 text-ink underline underline-offset-4">
-            {SHOP.contactEmail}
-          </a>
-          までご連絡ください。
-        </p>
-      </Section>
-    </TextPage>
-  )
-}
-
-function LegalPage() {
-  return (
-    <TextPage eyebrow="Legal" title="特定商取引法に基づく表記">
-      <dl className="border-t border-line">
-        {SHOP.legal.map(([label, value]) => (
-          <div key={label} className="grid gap-1 border-b border-line py-5 md:grid-cols-3 md:gap-6">
-            <dt className="text-[13px] text-mute">{label}</dt>
-            <dd className="text-[14px] md:col-span-2">{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </TextPage>
-  )
-}
-
-function PrivacyPage() {
-  return (
-    <TextPage eyebrow="Privacy" title="プライバシーポリシー">
-      <p className="text-mute">
-        {SHOP.brandName}（以下「当店」）は、お客様の個人情報を適切に取り扱い、保護することに努めます。
-      </p>
-      <Section title="取得する情報">
-        <p>ご注文やお問い合わせの際に、お名前、住所、電話番号、メールアドレスなどの情報をお預かりします。</p>
-      </Section>
-      <Section title="利用目的">
-        <p>お預かりした情報は、商品の発送、ご連絡、サービス向上のためにのみ利用します。</p>
-      </Section>
-      <Section title="第三者への提供">
-        <p>法令に基づく場合や、配送業者・決済事業者など業務の遂行に必要な場合を除き、お客様の同意なく第三者に提供することはありません。</p>
-      </Section>
-      <Section title="お問い合わせ">
-        <p>個人情報の取り扱いに関するお問い合わせは {SHOP.contactEmail} までご連絡ください。</p>
-      </Section>
-    </TextPage>
-  )
-}
-
-// ─── トップページ ／ SNS用ページ（同じデザイン） ─────────────
-// トップ: https://（サイトのドメイン）/
-// SNS用: https://（サイトのドメイン）/#/links
+// ─── SNS用ページ（プロフィールに貼るリンク集） ───────────────
+// URL: https://（サイトのドメイン）/#/links
 
 function LinkRow({ href, title, sub, external }: { href: string; title: string; sub: string; external?: boolean }) {
   return (
@@ -790,7 +720,7 @@ function LinkRow({ href, title, sub, external }: { href: string; title: string; 
   )
 }
 
-function LinksPage({ isHome, cartCount, onOpenCart }: { isHome: boolean; cartCount: number; onOpenCart: () => void }) {
+function LinksPage({ cartCount, onOpenCart }: { cartCount: number; onOpenCart: () => void }) {
   const [copied, setCopied] = useState(false)
   // 新作を優先して並べ、3の倍数（最大6枚）にそろえて並びに隙間ができないようにする
   const sorted = [...PRODUCTS.filter(p => p.isNew), ...PRODUCTS.filter(p => !p.isNew)]
@@ -825,18 +755,14 @@ function LinksPage({ isHome, cartCount, onOpenCart }: { isHome: boolean; cartCou
       <div className="flex flex-col items-center text-center">
         <Mark className="w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
         <Logo className="mt-6 w-[180px]" />
-        {isHome ? (
-          <h1 className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</h1>
-        ) : (
-          <p className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</p>
-        )}
+        <h1 className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</h1>
         <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
       </div>
 
       {/* リンク */}
       <nav className="mt-10 space-y-3" aria-label="公式リンク">
         <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
-        {!isHome && <LinkRow href="#/" title="Website" sub="公式サイト" />}
+        <LinkRow href="#/" title="Website" sub="公式サイト" />
         <LinkRow href="#/about" title="About" sub="ブランドについて" />
         <LinkRow href="#/guide" title="Guide" sub="送料・返品・サイズガイド" />
       </nav>
@@ -894,7 +820,7 @@ function LinksPage({ isHome, cartCount, onOpenCart }: { isHome: boolean; cartCou
 
 function NotFoundPage() {
   return (
-    <Container className="flex flex-col items-center py-28 text-center">
+    <Container className="flex flex-col items-center pb-10 pt-32 text-center">
       <Mark className="mb-8 w-16" />
       <p className="text-[40px] font-light">404</p>
       <p className="mt-4 text-[14px] text-mute">お探しのページは見つかりませんでした。</p>
@@ -1079,9 +1005,20 @@ export default function App() {
   const cart = useCart()
   const [cartOpen, setCartOpen] = useState(false)
   const closeCart = useCallback(() => setCartOpen(false), [])
+  const openCart = useCallback(() => setCartOpen(true), [])
 
   useEffect(() => {
     document.title = pageTitle(route)
+  }, [route])
+
+  // ページやセクションが変わったら、その場所へスクロール
+  useEffect(() => {
+    if (route.page === 'home' && route.section !== 'top') {
+      const target = route.open ? document.querySelector(`#info details[open]`) ?? document.getElementById('info') : document.getElementById(route.section)
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      window.scrollTo({ top: 0, behavior: route.page === 'home' ? 'smooth' : 'auto' })
+    }
   }, [route])
 
   const addToCart = (item: Omit<CartLine, 'qty'>) => {
@@ -1089,51 +1026,35 @@ export default function App() {
     setCartOpen(true)
   }
 
-  let page: ReactNode
-  switch (route.page) {
-    case 'home':
-      page = <LinksPage isHome cartCount={cart.count} onOpenCart={() => setCartOpen(true)} />
-      break
-    case 'shop':
-      page = <ShopPage category={route.category} />
-      break
-    case 'product':
-      page = <ProductPage id={route.id} onAdd={addToCart} />
-      break
-    case 'about':
-      page = <AboutPage />
-      break
-    case 'guide':
-      page = <GuidePage />
-      break
-    case 'legal':
-      page = <LegalPage />
-      break
-    case 'privacy':
-      page = <PrivacyPage />
-      break
-    case 'links':
-      page = <LinksPage isHome={false} cartCount={cart.count} onOpenCart={() => setCartOpen(true)} />
-      break
-    default:
-      page = <NotFoundPage />
-  }
-
-  // トップページとSNS用ページは、ヘッダー・フッターなしのシンプルなデザインで見せる
-  if (route.page === 'home' || route.page === 'links') {
+  // SNS用ページは、ナビなしのリンク集として表示
+  if (route.page === 'links') {
     return (
       <>
-        <main className="min-h-screen">{page}</main>
+        <main className="min-h-screen">
+          <LinksPage cartCount={cart.count} onOpenCart={openCart} />
+        </main>
         <CartDrawer open={cartOpen} onClose={closeCart} cart={cart} />
       </>
     )
   }
 
+  let page: ReactNode
+  switch (route.page) {
+    case 'home':
+      page = <HomePage category={route.category} />
+      break
+    case 'product':
+      page = <ProductPage id={route.id} onAdd={addToCart} />
+      break
+    default:
+      page = <NotFoundPage />
+  }
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header route={route} cartCount={cart.count} onOpenCart={() => setCartOpen(true)} />
-      <main className="flex-1">{page}</main>
-      <Footer />
+    <div className="min-h-screen">
+      <SiteNav route={route} cartCount={cart.count} onOpenCart={openCart} />
+      <main>{page}</main>
+      <InfoSection open={route.page === 'home' ? route.open : null} />
       <CartDrawer open={cartOpen} onClose={closeCart} cart={cart} />
     </div>
   )
