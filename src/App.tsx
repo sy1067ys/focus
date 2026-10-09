@@ -6,7 +6,7 @@ import { logoImg, markImg } from './brand-assets'
 // ─── 共通 ─────────────────────────────────────────────────────
 
 // ブランドのコンセプト（トップページの一番大きな見出し。\n の位置で改行します）
-const CONCEPT = 'Focus point on life…..。'
+const CONCEPT = '人生に\n焦点を。'
 
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`
 const findProduct = (id: string) => PRODUCTS.find(p => p.id === id)
@@ -278,16 +278,14 @@ function Header({ route, cartCount, onOpenCart }: { route: Route; cartCount: num
     <>
       <div className="bg-ink py-2 text-center text-[11px] tracking-[0.08em] text-paper">{SHOP.announcement}</div>
       <header className="sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur">
-        <Container className="grid h-14 grid-cols-3 items-center md:h-16">
-          <div className="flex items-center">
-            <button
-              className="-ml-2 p-2 md:hidden"
-              aria-label={menuOpen ? 'メニューを閉じる' : 'メニューを開く'}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(o => !o)}
-            >
-              <Icon name={menuOpen ? 'close' : 'menu'} />
-            </button>
+        <Container className="flex h-16 items-center justify-between gap-6 md:h-20">
+          {/* 左：ロゴ */}
+          <a href="#/" className="shrink-0" aria-label={`${SHOP.brandName} トップページ`}>
+            <Logo className="w-[136px] md:w-[200px]" />
+          </a>
+
+          {/* 右：ナビゲーションとカート */}
+          <div className="flex items-center gap-1 md:gap-10">
             <nav className="hidden gap-8 text-[13px] tracking-wide md:flex">
               {NAV_LINKS.map(link => (
                 <a
@@ -301,13 +299,19 @@ function Header({ route, cartCount, onOpenCart }: { route: Route; cartCount: num
                 </a>
               ))}
             </nav>
+            <span className="hidden h-4 w-px bg-line md:block" aria-hidden="true" />
+            <button onClick={onOpenCart} className="p-2 text-[13px] tracking-wide md:-mr-2">
+              Cart <span className="tabular-nums">({cartCount})</span>
+            </button>
+            <button
+              className="-mr-2 p-2 md:hidden"
+              aria-label={menuOpen ? 'メニューを閉じる' : 'メニューを開く'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(o => !o)}
+            >
+              <Icon name={menuOpen ? 'close' : 'menu'} />
+            </button>
           </div>
-          <a href="#/" className="justify-self-center" aria-label={`${SHOP.brandName} トップページ`}>
-            <Logo className="w-[104px] md:w-[132px]" />
-          </a>
-          <button onClick={onOpenCart} className="-mr-2 justify-self-end p-2 text-[13px] tracking-wide">
-            Cart <span className="tabular-nums">({cartCount})</span>
-          </button>
         </Container>
 
         {menuOpen && (
@@ -423,7 +427,7 @@ function HomePage() {
           </div>
           <div className="md:col-span-7">
             {/* PCでは画面の高さに収まるサイズにして、コンセプトが最初の画面に入るようにする */}
-            <div className="aspect-[4/5] overflow-hidden bg-stone md:aspect-auto md:h-[calc(100svh-160px)] md:max-h-[920px] md:min-h-[520px]">
+            <div className="aspect-[4/5] overflow-hidden bg-stone md:aspect-auto md:h-[calc(100svh-176px)] md:max-h-[920px] md:min-h-[520px]">
               <img src={SHOP.hero.image} alt={`${SHOP.brandName} ${SHOP.hero.season}`} className="h-full w-full object-cover" />
             </div>
           </div>
