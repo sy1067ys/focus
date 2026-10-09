@@ -622,12 +622,21 @@ function HomePage({ category }: { category: Category | null }) {
   return (
     <>
       {/* ブランド */}
-      <section id="top" className="mx-auto w-full max-w-[460px] px-5 pt-36 md:pt-44">
-        <div className="flex flex-col items-center text-center">
-          <Mark className="w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
-          <Logo className="mt-6 w-[180px]" />
-          <h1 className="mt-12 text-[20px] font-light tracking-[-0.01em] md:mt-14">{CONCEPT.replace('\n', ' ')}</h1>
-          <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
+      <section id="top" className="mx-auto w-full max-w-[1040px] px-5 pt-32 md:pt-44">
+        <div className="flex flex-col items-center">
+          <Mark className="w-14 md:w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
+
+          {/* 左：ロゴ ／ 右：コンセプト */}
+          <div className="mt-12 flex items-center justify-center gap-5 md:mt-16 md:gap-10 lg:gap-12">
+            <Logo className="w-[150px] shrink-0 sm:w-[220px] md:w-[300px] lg:w-[400px]" />
+            <span className="h-16 w-px shrink-0 bg-ink/25 md:h-24 lg:h-28" aria-hidden="true" />
+            <div className="text-left">
+              <h1 className="whitespace-nowrap text-[22px] font-light leading-[1.15] tracking-[-0.02em] sm:text-[28px] md:text-[36px] lg:text-[46px]">
+                <Lines text={CONCEPT} />
+              </h1>
+              <p className="mt-2 text-[10px] tracking-[0.14em] text-mute sm:text-[11px] md:mt-4 md:text-[14px]">{SHOP.tagline}</p>
+            </div>
+          </div>
         </div>
       </section>
 
