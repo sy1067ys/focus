@@ -5,6 +5,9 @@ import { logoImg, markImg } from './brand-assets'
 
 // ─── 共通 ─────────────────────────────────────────────────────
 
+// ブランドのコンセプト（トップページの一番大きな見出し。\n の位置で改行します）
+const CONCEPT = '人生に\n焦点を。'
+
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`
 const findProduct = (id: string) => PRODUCTS.find(p => p.id === id)
 
@@ -68,7 +71,7 @@ function useRoute() {
 function pageTitle(route: Route): string {
   switch (route.page) {
     case 'home':
-      return `${SHOP.brandName} | ${SHOP.tagline}`
+      return `${SHOP.brandName} | ${CONCEPT.replace('\n', '')}`
     case 'shop':
       return `${route.category ? CATEGORY_LABELS[route.category] : 'すべての商品'} | ${SHOP.brandName}`
     case 'product':
@@ -332,8 +335,8 @@ function Footer() {
         <div className="flex items-start gap-5 md:col-span-5">
           <Mark className="w-12 md:w-14" />
           <div className="pt-1">
-            <p className="text-[13px]">{SHOP.tagline}</p>
-            <p className="mt-2 text-[12px] leading-relaxed text-mute">東京発のアパレルブランド</p>
+            <p className="text-[15px]">{CONCEPT.replace('\n', '')}</p>
+            <p className="mt-2 text-[12px] leading-relaxed text-mute">{SHOP.tagline}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-8 text-[13px] md:col-span-7 md:grid-cols-3">
@@ -401,21 +404,26 @@ function HomePage() {
     <>
       {/* メインビジュアル */}
       <section>
-        <Container className="grid gap-8 pt-4 md:grid-cols-12 md:gap-8 md:pt-8">
-          <div className="order-2 flex flex-col justify-end pb-2 md:order-1 md:col-span-5 md:pb-12">
+        <Container className="grid gap-8 pt-8 md:grid-cols-12 md:gap-8 md:pt-8">
+          <div className="flex flex-col justify-end md:col-span-5 md:justify-center md:py-8">
             <Eyebrow>{SHOP.hero.season}</Eyebrow>
-            <h1 className="mt-5 text-[52px] font-light leading-[0.95] tracking-[-0.03em] md:text-[clamp(64px,7vw,112px)]">
-              <Lines text={SHOP.hero.title} />
+            <h1 className="mt-6 text-[56px] font-light leading-[1.2] tracking-[0.02em] md:text-[clamp(64px,6.4vw,104px)]">
+              <Lines text={CONCEPT} />
             </h1>
-            <p className="mt-6 max-w-sm text-[14px] leading-[1.9] text-mute">
+            <p className="mt-5 flex items-center gap-3 text-[13px] tracking-[0.12em] md:mt-6 md:text-[14px]">
+              <span className="h-px w-8 bg-ink" aria-hidden="true" />
+              {SHOP.tagline}
+            </p>
+            <p className="mt-6 max-w-sm text-[14px] leading-[1.9] text-mute md:mt-8">
               <Lines text={SHOP.hero.lead} />
             </p>
             <div className="mt-8">
               <ArrowLink href="#/shop">コレクションを見る</ArrowLink>
             </div>
           </div>
-          <div className="order-1 md:order-2 md:col-span-7">
-            <div className="aspect-[4/5] overflow-hidden bg-stone">
+          <div className="md:col-span-7">
+            {/* PCでは画面の高さに収まるサイズにして、コンセプトが最初の画面に入るようにする */}
+            <div className="aspect-[4/5] overflow-hidden bg-stone md:aspect-auto md:h-[calc(100svh-160px)] md:max-h-[920px] md:min-h-[520px]">
               <img src={SHOP.hero.image} alt={`${SHOP.brandName} ${SHOP.hero.season}`} className="h-full w-full object-cover" />
             </div>
           </div>
