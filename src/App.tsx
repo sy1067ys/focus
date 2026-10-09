@@ -622,18 +622,13 @@ function HomePage({ category }: { category: Category | null }) {
   return (
     <>
       {/* ブランド */}
-      <section id="top" className="mx-auto w-full max-w-[460px] px-5 pt-24 md:pt-28">
+      <section id="top" className="mx-auto w-full max-w-[460px] px-5 pt-36 md:pt-44">
         <div className="flex flex-col items-center text-center">
           <Mark className="w-[72px]" label={`${SHOP.brandName} シンボルマーク`} />
           <Logo className="mt-6 w-[180px]" />
           <h1 className="mt-6 text-[20px] font-light tracking-[-0.01em]">{CONCEPT.replace('\n', ' ')}</h1>
           <p className="mt-2 text-[12px] tracking-[0.12em] text-mute">{SHOP.tagline}</p>
         </div>
-        <nav className="mt-10 space-y-3" aria-label="ページ内の移動">
-          <LinkRow href="#/about" title="About" sub="ブランドについて" />
-          <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
-          <LinkRow href="#/guide" title="Guide" sub="送料・返品・サイズガイド" />
-        </nav>
       </section>
 
       {/* ブランドについて */}
