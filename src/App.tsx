@@ -19,7 +19,7 @@ const ACTIVE_SOCIALS = SOCIAL_LINKS.filter(s => s.url)
 
 // 「FOCUSについて」の文章（\n の位置で改行します）
 const ABOUT_TEXT = {
-  lead: '人生に集点を。',
+  lead: 'Focus point on life.',
   paragraphs: [
     'FOCUSは、自分の好きなもの、大切にしたいこと、目指す未来に目を向けるアパレルブランドです。',
     '日常に取り入れやすいカジュアルなスタイルに、印象に残るロゴやデザインを重ね、自分らしさを表現する服を提案します。',
