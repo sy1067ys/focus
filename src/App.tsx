@@ -17,6 +17,17 @@ const SOCIAL_LINKS: { label: string; handle: string; url: string }[] = [
 ]
 const ACTIVE_SOCIALS = SOCIAL_LINKS.filter(s => s.url)
 
+// 「FOCUSについて」の文章（\n の位置で改行します）
+const ABOUT_TEXT = {
+  lead: '人生に集点を。',
+  paragraphs: [
+    'FOCUSは、自分の好きなもの、大切にしたいこと、目指す未来に目を向けるアパレルブランドです。',
+    '日常に取り入れやすいカジュアルなスタイルに、印象に残るロゴやデザインを重ね、自分らしさを表現する服を提案します。',
+    '服を選ぶ時間が、自分の気持ちや進みたい方向を見つめるきっかけになる。そんな存在を目指しています。',
+    '自分の意思で選び、自分の人生を楽しむ。\nFOCUSは、その人らしい歩みを服を通して後押しします。',
+  ],
+}
+
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`
 const findProduct = (id: string) => PRODUCTS.find(p => p.id === id)
 
@@ -647,11 +658,13 @@ function HomePage({ category }: { category: Category | null }) {
       <section id="about" className="mx-auto mt-44 w-full max-w-[560px] scroll-mt-20 px-5 md:mt-60">
         <SectionHeading eyebrow="About" title="FOCUSについて" />
         <p className="mt-8 text-center text-[20px] font-light leading-[1.6]">
-          <Lines text={SHOP.about.lead} />
+          <Lines text={ABOUT_TEXT.lead} />
         </p>
         <div className="mt-8 space-y-5 text-[14px] leading-[2.1]">
-          {SHOP.about.paragraphs.map((p, i) => (
-            <p key={i}>{p}</p>
+          {ABOUT_TEXT.paragraphs.map((p, i) => (
+            <p key={i}>
+              <Lines text={p} />
+            </p>
           ))}
         </div>
       </section>
