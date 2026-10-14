@@ -546,7 +546,7 @@ function InfoSection({ open }: { open: 'legal' | 'privacy' | null }) {
     <section id="info" className="mx-auto mt-28 w-full max-w-[460px] scroll-mt-20 border-t border-line px-5 pb-16 pt-12">
       <Eyebrow>Info</Eyebrow>
       <ul className="mt-6">
-        <li><a href="#/about" className={item}>ブランドについて</a></li>
+        <li><a href="#/about" className={item}>FOCUSについて</a></li>
         <li><a href="#/guide" className={item}>ご利用ガイド</a></li>
         <li>
           <details key={`legal-${open}`} open={open === 'legal'} className="scroll-mt-20">
@@ -643,9 +643,9 @@ function HomePage({ category }: { category: Category | null }) {
         </div>
       </section>
 
-      {/* ブランドについて */}
+      {/* FOCUSについて */}
       <section id="about" className="mx-auto mt-44 w-full max-w-[560px] scroll-mt-20 px-5 md:mt-60">
-        <SectionHeading eyebrow="About" title="ブランドについて" />
+        <SectionHeading eyebrow="About" title="FOCUSについて" />
         <p className="mt-8 text-center text-[20px] font-light leading-[1.6]">
           <Lines text={SHOP.about.lead} />
         </p>
@@ -793,7 +793,7 @@ function LinksPage({ cartCount, onOpenCart }: { cartCount: number; onOpenCart: (
       <nav className="mt-10 space-y-3" aria-label="公式リンク">
         <LinkRow href="#/shop" title="Online store" sub="オンラインストア" />
         <LinkRow href="#/" title="Website" sub="公式サイト" />
-        <LinkRow href="#/about" title="About" sub="ブランドについて" />
+        <LinkRow href="#/about" title="About" sub="FOCUSについて" />
         <LinkRow href="#/guide" title="Guide" sub="送料・返品・サイズガイド" />
       </nav>
 
