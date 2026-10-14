@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { PRODUCTS, CATEGORIES, CATEGORY_LABELS, type Category, type Product } from './products'
 import { SHOP } from './shop-config'
 import { logoImg, markImg } from './brand-assets'
+import { gaEnabled, clarityEnabled, initAnalytics, trackPageView, trackCommerce, type TrackItem } from './analytics'
 
 // ─── 共通 ─────────────────────────────────────────────────────
 
@@ -53,6 +54,29 @@ type PolicyBlock =
   | { type: 'p'; text: string }
   | { type: 'ul' | 'ol'; items: string[] }
   | { type: 'dl'; items: [string, string][] }
+
+// アクセス解析ツールを使う場合に、下の「6．Cookie等の利用」へ自動で追記される文章
+// （analytics.ts にIDを入れたツールの分だけ表示されます）
+const ANALYTICS_TOOLS: [string, string][] = [
+  ...(gaEnabled
+    ? [[
+        'Googleアナリティクス',
+        '送信先：Google LLC\n利用目的：アクセス数、流入元、商品の閲覧・カートへの追加状況などの分析\nプライバシーポリシー：https://policies.google.com/privacy\n無効化の方法：https://tools.google.com/dlpage/gaoptout',
+      ] as [string, string]]
+    : []),
+  ...(clarityEnabled
+    ? [[
+        'Microsoft Clarity',
+        '送信先：Microsoft Corporation\n利用目的：ページ内でよく見られている箇所やクリック・スクロール等の操作の分析\nプライバシーポリシー：https://privacy.microsoft.com/ja-jp/privacystatement',
+      ] as [string, string]]
+    : []),
+]
+const ANALYTICS_POLICY: PolicyBlock[] = ANALYTICS_TOOLS.length
+  ? [
+      { type: 'p', text: '当サイトでは、利用状況の把握とサイト・商品の改善のため、以下のアクセス解析ツールを利用しています。これらのツールは、Cookie等を利用して、閲覧したページ、滞在時間、クリック・スクロール等の操作、端末・ブラウザ情報、おおよその地域等の情報を収集し、各提供事業者へ送信します。' },
+      { type: 'dl', items: ANALYTICS_TOOLS },
+    ]
+  : []
 const PRIVACY_POLICY: { intro: string; sections: { title: string; blocks: PolicyBlock[] }[] } = {
   intro: "FOCUSのオンラインストアを運営するYOICHI（以下「当店」といいます）は、お客様の個人情報を適切に取り扱うため、個人情報保護法その他の関係法令を遵守し、以下の方針を定めます。",
   sections: [
@@ -126,6 +150,7 @@ const PRIVACY_POLICY: { intro: string; sections: { title: string; blocks: Policy
         { type: 'p', text: "取得した情報を他の情報と照合することでお客様を識別できる場合は、個人情報として本ポリシーに従って取り扱います。" },
         { type: 'p', text: "Cookieはブラウザの設定で制限・削除できます。ただし、設定によっては、ご購入などサイトの一部機能が利用できなくなる場合があります。" },
         { type: 'p', text: "アクセス解析や広告等の外部サービスを利用する場合は、その利用目的、送信される情報、送信先および利用停止の方法等について、実際の利用内容に応じて当サイトで案内し、法令上必要な手続きを行います。" },
+        ...ANALYTICS_POLICY,
       ],
     },
     {
@@ -172,6 +197,37 @@ const PRIVACY_POLICY: { intro: string; sections: { title: string; blocks: Policy
 
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`
 const findProduct = (id: string) => PRODUCTS.find(p => p.id === id)
+
+// アクセス解析に送る商品データ
+const toTrackItem = (product: Product, variant?: string, quantity = 1): TrackItem => ({
+  id: product.id,
+  name: product.name,
+  category: product.category,
+  price: product.price,
+  variant,
+  quantity,
+})
+const lineToTrackItem = (line: CartLine): TrackItem[] => {
+  const product = findProduct(line.productId)
+  return product ? [toTrackItem(product, `${line.color} / ${line.size}`, line.qty)] : []
+}
+
+// 文章の中のURLをリンクにする
+function Linkify({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a key={i} href={part} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-mute">
+            {part}
+          </a>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  )
+}
 
 // 改行（\n）を含む文章を表示する
 function Lines({ text }: { text: string }) {
@@ -486,6 +542,7 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
     setSize(product && product.sizes.length === 1 ? product.sizes[0] : null)
     setColor(product?.colors[0]?.name ?? '')
     setError('')
+    if (product) trackCommerce('view_item', [toTrackItem(product)])
   }, [id])
 
   if (!product) return <NotFoundPage />
@@ -730,14 +787,14 @@ function InfoSection({ open }: { open: 'legal' | 'privacy' | null }) {
                   <h3 className="text-[14px] font-medium text-ink">{section.title}</h3>
                   <div className="mt-3 space-y-3">
                     {section.blocks.map((block, i) => {
-                      if (block.type === 'p') return <p key={i}>{block.text}</p>
+                      if (block.type === 'p') return <p key={i}><Linkify text={block.text} /></p>
                       if (block.type === 'dl')
                         return (
                           <dl key={i} className="border-t border-line">
                             {block.items.map(([label, value]) => (
                               <div key={label} className="border-b border-line py-3">
                                 <dt className="text-[11px]">{label}</dt>
-                                <dd className="mt-0.5 text-ink">{value}</dd>
+                                <dd className="mt-0.5 whitespace-pre-line break-all text-ink"><Linkify text={value} /></dd>
                               </div>
                             ))}
                           </dl>
@@ -765,7 +822,7 @@ function InfoSection({ open }: { open: 'legal' | 'privacy' | null }) {
         {ACTIVE_SOCIALS.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-[14px]">
             {ACTIVE_SOCIALS.map(s => (
-              <a key={s.label} href={s.url} target="_blank" rel="noreferrer" className="hover:text-mute">
+              <a key={s.label} href={s.url} target="_blank" rel="noreferrer" data-sns={s.label} className="hover:text-mute">
                 {s.label}
               </a>
             ))}
@@ -913,10 +970,11 @@ function HomePage({ category }: { category: Category | null }) {
 // ─── SNS用ページ（プロフィールに貼るリンク集） ───────────────
 // URL: https://（サイトのドメイン）/#/links
 
-function LinkRow({ href, title, sub, external }: { href: string; title: string; sub: string; external?: boolean }) {
+function LinkRow({ href, title, sub, external, sns }: { href: string; title: string; sub: string; external?: boolean; sns?: string }) {
   return (
     <a
       href={href}
+      data-sns={sns}
       {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
       className="group flex items-center justify-between border border-ink px-5 py-4 transition-colors hover:bg-ink hover:text-paper"
     >
@@ -1000,7 +1058,7 @@ function LinksPage({ cartCount, onOpenCart }: { cartCount: number; onOpenCart: (
           <Eyebrow>Follow</Eyebrow>
           <div className="mt-4 space-y-3">
             {ACTIVE_SOCIALS.map(s => (
-              <LinkRow key={s.label} href={s.url} title={s.label} sub={s.handle} external />
+              <LinkRow key={s.label} href={s.url} title={s.label} sub={s.handle} external sns={s.label} />
             ))}
           </div>
         </section>
@@ -1058,6 +1116,7 @@ function CartDrawer({
       setNotice(false)
       return
     }
+    trackCommerce('view_cart', cart.lines.flatMap(lineToTrackItem))
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
@@ -1073,6 +1132,7 @@ function CartDrawer({
   const remaining = SHOP.freeShippingThreshold - subtotal
 
   const handleCheckout = () => {
+    trackCommerce('begin_checkout', lines.flatMap(lineToTrackItem))
     if (!SHOP.checkoutEnabled) setNotice(true)
   }
 
@@ -1139,7 +1199,12 @@ function CartDrawer({
                             {line.color} / {line.size}
                           </p>
                         </div>
-                        <button onClick={() => cart.remove(index)} className="h-fit text-[11px] text-mute underline underline-offset-2 hover:text-ink">
+                        <button
+                          onClick={() => {
+                            trackCommerce('remove_from_cart', lineToTrackItem(line))
+                            cart.remove(index)
+                          }}
+                          className="h-fit text-[11px] text-mute underline underline-offset-2 hover:text-ink">
                           削除
                         </button>
                       </div>
@@ -1218,8 +1283,11 @@ export default function App() {
   const closeCart = useCallback(() => setCartOpen(false), [])
   const openCart = useCallback(() => setCartOpen(true), [])
 
-  useEffect(() => {
+  // ページ名の更新とアクセス記録（商品閲覧などの記録より先に行うため useLayoutEffect）
+  useLayoutEffect(() => {
     document.title = pageTitle(route)
+    initAnalytics()
+    trackPageView(document.title)
   }, [route])
 
   // ページやセクションが変わったら、その場所へスクロール
@@ -1233,6 +1301,8 @@ export default function App() {
   }, [route])
 
   const addToCart = (item: Omit<CartLine, 'qty'>) => {
+    const product = findProduct(item.productId)
+    if (product) trackCommerce('add_to_cart', [toTrackItem(product, `${item.color} / ${item.size}`)])
     cart.add(item)
     setCartOpen(true)
   }
