@@ -9,12 +9,30 @@ import { gaEnabled, clarityEnabled, initAnalytics, trackPageView, trackCommerce,
 // ブランドのコンセプト（トップページの一番大きな見出し。\n の位置で改行します）
 const CONCEPT = 'Focus point\non life.'
 
+// 公式LINE（トップページの「公式LINE」欄の内容）
+const LINE_OA = {
+  // 友だち追加URL（LINE公式アカウントの管理画面でコピーできます。例：'https://lin.ee/AbCdEfG'）
+  // 空欄のあいだは、ボタンが「近日公開」の表示になります
+  url: '',
+  // LINE ID（例：'@focus'）
+  id: '@focus',
+  // QRコード画像のURL（管理画面の「友だち追加ガイド」でコピーできます。PCでのみ表示。空欄なら非表示）
+  qrImage: '',
+  lead: '新作や再入荷のお知らせを、\nいち早くLINEでお届けします。',
+  // 友だちになるとできること（内容は自由に書き換えてください）
+  benefits: [
+    { title: 'New arrivals', text: '新作・再入荷のお知らせ' },
+    { title: 'Early access', text: '先行販売・限定情報のご案内' },
+    { title: 'Support', text: 'サイズやご注文についてのご相談' },
+  ],
+}
+
 // ブランドのSNS（URLを入れたものだけが SNS用ページとフッターに表示されます）
 const SOCIAL_LINKS: { label: string; handle: string; url: string }[] = [
   { label: 'Instagram', handle: '@focus', url: SHOP.instagramUrl },
   { label: 'X', handle: '@focus', url: '' },
   { label: 'TikTok', handle: '@focus', url: '' },
-  { label: 'LINE', handle: '公式アカウント', url: '' },
+  { label: 'LINE', handle: `公式アカウント ${LINE_OA.id}`, url: LINE_OA.url },
 ]
 const ACTIVE_SOCIALS = SOCIAL_LINKS.filter(s => s.url)
 
@@ -248,7 +266,7 @@ function Lines({ text }: { text: string }) {
 // トップページは1枚のページで、#/shop #/about #/guide #/info で各セクションへ移動します。
 // 商品の詳細だけは別画面（#/product/商品ID）です。
 
-const SECTIONS = ['top', 'shop', 'about', 'guide', 'info'] as const
+const SECTIONS = ['top', 'shop', 'about', 'guide', 'line', 'info'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 type Route =
@@ -269,7 +287,7 @@ function parseHash(): Route {
     const category = CATEGORIES.find(c => c.toLowerCase() === second.toLowerCase())
     return category ? homeRoute('shop', category) : { page: 'notfound' }
   }
-  if (first === 'about' || first === 'guide' || first === 'info') return homeRoute(first)
+  if (first === 'about' || first === 'guide' || first === 'line' || first === 'info') return homeRoute(first)
   if (first === 'legal' || first === 'privacy') return homeRoute('info', null, first)
   if (first === 'product' && second) return { page: 'product', id: decodeURIComponent(second) }
   if (first === 'links') return { page: 'links' }
@@ -307,6 +325,7 @@ function pageTitle(route: Route): string {
         shop: route.category ? CATEGORY_LABELS[route.category] : 'Online store',
         about: 'About',
         guide: 'ご利用ガイド',
+        line: '公式LINE',
         info: route.open === 'legal' ? '特定商取引法に基づく表記' : route.open === 'privacy' ? 'プライバシーポリシー' : 'Info',
       }
       return `${SHOP.brandName} | ${label[route.section]}`
@@ -758,6 +777,7 @@ function InfoSection({ open }: { open: 'legal' | 'privacy' | null }) {
       <ul className="mt-6">
         <li><a href="#/about" className={item}>FOCUSについて</a></li>
         <li><a href="#/guide" className={item}>ご利用ガイド</a></li>
+        <li><a href="#/line" className={item}>公式LINE</a></li>
         <li>
           <details key={`legal-${open}`} open={open === 'legal'} className="scroll-mt-20">
             <summary className={`${item} flex items-center justify-between`}>
@@ -963,7 +983,62 @@ function HomePage({ category }: { category: Category | null }) {
           </Accordion>
         </div>
       </section>
+
+      {/* 公式LINE */}
+      <LineSection />
     </>
+  )
+}
+
+function LineSection() {
+  const hasQr = !!LINE_OA.qrImage
+  return (
+    <section id="line" className="mx-auto mt-28 w-full max-w-[760px] scroll-mt-20 px-5">
+      <SectionHeading eyebrow="Official LINE" title="公式LINE" />
+      <p className="mt-6 text-center text-[14px] leading-[2]">
+        <Lines text={LINE_OA.lead} />
+      </p>
+
+      <ul className="mt-10 grid border-y border-line sm:grid-cols-3">
+        {LINE_OA.benefits.map((b, i) => (
+          <li
+            key={b.title}
+            className={`py-5 text-center sm:py-7 ${i > 0 ? 'border-t border-line sm:border-l sm:border-t-0' : ''}`}
+          >
+            <p className="text-[10px] uppercase tracking-[0.2em] text-mute">{b.title}</p>
+            <p className="mt-2 text-[13px]">{b.text}</p>
+          </li>
+        ))}
+      </ul>
+
+      <div className={`mt-10 flex flex-col items-center gap-8 ${hasQr ? 'md:flex-row md:justify-center md:gap-14' : ''}`}>
+        {hasQr && (
+          <div className="hidden shrink-0 text-center md:block">
+            <img src={LINE_OA.qrImage} alt="公式LINE 友だち追加用QRコード" className="h-32 w-32 border border-line bg-white p-2" />
+            <p className="mt-2 text-[11px] text-mute">スマートフォンで読み取り</p>
+          </div>
+        )}
+        <div className="flex w-full max-w-[320px] flex-col items-center">
+          {LINE_OA.url ? (
+            <a
+              href={LINE_OA.url}
+              target="_blank"
+              rel="noreferrer"
+              data-sns="LINE"
+              className="group flex w-full items-center justify-center gap-3 bg-ink py-4 text-[13px] tracking-[0.1em] text-paper transition-opacity hover:opacity-85"
+            >
+              友だち追加する
+              <Icon name="arrow" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </a>
+          ) : (
+            <p className="w-full border border-line py-4 text-center text-[13px] tracking-[0.1em] text-mute">近日公開</p>
+          )}
+          <p className="mt-3 text-[12px] text-mute">
+            LINE ID：<span className="text-ink">{LINE_OA.id}</span>
+          </p>
+        </div>
+      </div>
+    </section>
   )
 }
 
