@@ -3,6 +3,20 @@ import { PRODUCTS, CATEGORIES, CATEGORY_LABELS, type Category, type Product } fr
 import { SHOP } from './shop-config'
 import { logoImg, markImg } from './brand-assets'
 import { lineupTee, lineupBeanie } from './lineup-images'
+import {
+  MEMBER,
+  useMember,
+  signIn,
+  signUp,
+  signOut,
+  requestPasswordReset,
+  addViewHistory,
+  getViewHistory,
+  clearViewHistory,
+  getOrders,
+  type Member,
+  type Order,
+} from './member'
 import { gaEnabled, clarityEnabled, initAnalytics, trackPageView, trackCommerce, trackEvent, type TrackItem } from './analytics'
 
 // ─── 共通 ─────────────────────────────────────────────────────
@@ -280,6 +294,9 @@ type Route =
   | { page: 'home'; section: SectionId; category: Category | null; open: 'legal' | 'privacy' | null }
   | { page: 'product'; id: string }
   | { page: 'links' }
+  | { page: 'login'; reset: boolean }
+  | { page: 'register' }
+  | { page: 'account'; preview: boolean }
   | { page: 'notfound' }
 
 function homeRoute(section: SectionId, category: Category | null = null, open: 'legal' | 'privacy' | null = null): Route {
@@ -298,6 +315,9 @@ function parseHash(): Route {
   if (first === 'legal' || first === 'privacy') return homeRoute('info', null, first)
   if (first === 'product' && second) return { page: 'product', id: decodeURIComponent(second) }
   if (first === 'links') return { page: 'links' }
+  if (first === 'login') return { page: 'login', reset: second === 'reset' }
+  if (first === 'register') return { page: 'register' }
+  if (first === 'account') return { page: 'account', preview: second === 'preview' }
   return { page: 'notfound' }
 }
 
@@ -340,6 +360,12 @@ function pageTitle(route: Route): string {
     }
     case 'product':
       return `${findProduct(route.id)?.nameJa ?? '商品が見つかりません'} | ${SHOP.brandName}`
+    case 'login':
+      return `${route.reset ? 'パスワードの再設定' : 'ログイン'} | ${SHOP.brandName}`
+    case 'register':
+      return `新規会員登録 | ${SHOP.brandName}`
+    case 'account':
+      return `マイページ | ${SHOP.brandName}`
     case 'links':
       return `${SHOP.brandName} | Official links`
     default:
@@ -403,7 +429,7 @@ function useCart() {
 
 // ─── アイコン ─────────────────────────────────────────────────
 
-function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus' | 'minus' | 'arrow' | 'bag' | 'search'; className?: string }) {
+function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus' | 'minus' | 'arrow' | 'bag' | 'search' | 'user'; className?: string }) {
   const paths: Record<string, ReactNode> = {
     // ショッピングバッグ（カート）
     bag: (
@@ -431,6 +457,13 @@ function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus'
       </>
     ),
     minus: <line x1="5" y1="12" x2="19" y2="12" />,
+    // 人の形（ログイン・マイページ）
+    user: (
+      <>
+        <circle cx="12" cy="8.5" r="3.75" />
+        <path d="M4.5 20.5c.8-3.9 3.8-6 7.5-6s6.7 2.1 7.5 6" />
+      </>
+    ),
     // 虫めがね（検索）
     search: (
       <>
@@ -576,7 +609,10 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
     setSize(product && product.sizes.length === 1 ? product.sizes[0] : null)
     setColor(product?.colors[0]?.name ?? '')
     setError('')
-    if (product) trackCommerce('view_item', [toTrackItem(product)])
+    if (product) {
+      trackCommerce('view_item', [toTrackItem(product)])
+      addViewHistory(product.id)
+    }
   }, [id])
 
   if (!product) return <NotFoundPage />
@@ -929,6 +965,7 @@ function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: nu
   // トップの一番上では大きなマークが見えているので、ナビの小さなマークは隠す
   const showMark = route.page !== 'home' || scrolled
   const [searchOpen, setSearchOpen] = useState(false)
+  const member = useMember()
   // ページが変わったらスマホの検索パネルを閉じる
   useEffect(() => setSearchOpen(false), [route])
 
@@ -963,7 +1000,7 @@ function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: nu
             <Icon name="search" className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex items-center gap-3 text-[12px] tracking-wide min-[400px]:gap-4 md:gap-8 md:text-[13px]" aria-label="メインメニュー">
+        <nav className="flex items-center gap-2.5 text-[11px] tracking-wide min-[380px]:gap-3 min-[380px]:text-[12px] min-[400px]:gap-4 md:gap-8 md:text-[13px]" aria-label="メインメニュー">
           {NAV_ITEMS.map(item => (
             <a
               key={item.href}
@@ -976,6 +1013,16 @@ function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: nu
             </a>
           ))}
           <span className="hidden h-3.5 w-px bg-line min-[400px]:block" aria-hidden="true" />
+          <a
+            href={member ? '#/account' : '#/login'}
+            aria-label={member ? 'マイページ' : 'ログイン'}
+            title={member ? 'マイページ' : 'ログイン・会員登録'}
+            className={`-m-1.5 p-1.5 transition-colors ${
+              route.page === 'login' || route.page === 'register' || route.page === 'account' ? 'text-ink' : 'hover:text-mute'
+            }`}
+          >
+            <Icon name="user" className="h-5 w-5" />
+          </a>
           <CartButton count={cartCount} onClick={onOpenCart} className="-m-1.5 p-1.5" />
         </nav>
       </div>
@@ -994,6 +1041,7 @@ function InfoSection({ open }: { open: 'legal' | 'privacy' | null }) {
       <ul className="mt-6">
         <li><a href="#/about" className={item}>FOCUSについて</a></li>
         <li><a href="#/guide" className={item}>ご利用ガイド</a></li>
+        <li><a href="#/login" className={item}>ログイン・会員登録</a></li>
         <li><a href="#/line" className={item}>公式LINE</a></li>
         <li>
           <details key={`legal-${open}`} open={open === 'legal'} className="scroll-mt-20">
@@ -1420,6 +1468,419 @@ function LinksPage({ cartCount, onOpenCart }: { cartCount: number; onOpenCart: (
   )
 }
 
+// ─── 会員ページ（ログイン・会員登録・マイページ） ─────────────────
+
+const inputStyle = { outline: 'none' }
+
+function Field({
+  label,
+  type = 'text',
+  value,
+  onChange,
+  autoComplete,
+  error,
+  hint,
+}: {
+  label: string
+  type?: string
+  value: string
+  onChange: (v: string) => void
+  autoComplete?: string
+  error?: string
+  hint?: string
+}) {
+  return (
+    <label className="block">
+      <span className="text-[12px] tracking-wide">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        aria-invalid={!!error}
+        style={inputStyle}
+        className={`mt-2 h-12 w-full border bg-paper px-4 text-[16px] transition-colors focus:border-ink md:text-[14px] ${
+          error ? 'border-[#b42318]' : 'border-line'
+        }`}
+      />
+      {error ? (
+        <span className="mt-1.5 block text-[12px] text-[#b42318]">{error}</span>
+      ) : (
+        hint && <span className="mt-1.5 block text-[11px] text-mute">{hint}</span>
+      )}
+    </label>
+  )
+}
+
+function Notice({ children }: { children: ReactNode }) {
+  return (
+    <p role="status" className="border border-line bg-stone px-4 py-3 text-[12px] leading-relaxed">
+      {children}
+    </p>
+  )
+}
+
+function SubmitButton({ children, busy }: { children: ReactNode; busy: boolean }) {
+  return (
+    <button
+      type="submit"
+      disabled={busy}
+      className="w-full bg-ink py-4 text-[13px] tracking-[0.1em] text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
+    >
+      {children}
+    </button>
+  )
+}
+
+const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+
+function AuthLayout({ eyebrow, title, lead, children }: { eyebrow: string; title: string; lead?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-[420px] px-5 pb-8 pt-28 md:pt-36">
+      <SectionHeading eyebrow={eyebrow} title={title} />
+      {lead && <p className="mt-5 text-center text-[13px] leading-[1.9] text-mute">{lead}</p>}
+      <div className="mt-10">{children}</div>
+    </div>
+  )
+}
+
+function LoginPage({ reset, message }: { reset?: boolean; message?: string }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setErrors({})
+    setNotice('')
+  }, [reset])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const next: typeof errors = {}
+    if (!isEmail(email)) next.email = 'メールアドレスを正しく入力してください'
+    if (!reset && !password) next.password = 'パスワードを入力してください'
+    setErrors(next)
+    setNotice('')
+    if (Object.keys(next).length) return
+    setBusy(true)
+    const result = reset ? await requestPasswordReset(email.trim()) : await signIn(email.trim(), password)
+    setBusy(false)
+    if (!result.ok) setNotice(result.message)
+    else if (reset) setNotice('パスワード再設定用のメールをお送りしました。メールに記載のリンクから再設定してください。')
+    else window.location.hash = '/account'
+  }
+
+  if (reset) {
+    return (
+      <AuthLayout eyebrow="Password" title="パスワードの再設定" lead="ご登録のメールアドレスに、パスワード再設定用のリンクをお送りします。">
+        <form onSubmit={submit} noValidate className="space-y-6">
+          <Field label="メールアドレス" type="email" value={email} onChange={setEmail} autoComplete="email" error={errors.email} />
+          {notice && <Notice>{notice}</Notice>}
+          <SubmitButton busy={busy}>再設定メールを送る</SubmitButton>
+        </form>
+        <div className="mt-8 text-center">
+          <a href="#/login" className="text-[12px] text-mute underline underline-offset-4 hover:text-ink">ログインに戻る</a>
+        </div>
+      </AuthLayout>
+    )
+  }
+
+  return (
+    <AuthLayout eyebrow="Login" title="ログイン" lead={message}>
+      <form onSubmit={submit} noValidate className="space-y-6">
+        <Field label="メールアドレス" type="email" value={email} onChange={setEmail} autoComplete="email" error={errors.email} />
+        <Field label="パスワード" type="password" value={password} onChange={setPassword} autoComplete="current-password" error={errors.password} />
+        <div className="-mt-2 text-right">
+          <a href="#/login/reset" className="text-[12px] text-mute underline underline-offset-4 hover:text-ink">パスワードをお忘れの方</a>
+        </div>
+        {notice && <Notice>{notice}</Notice>}
+        <SubmitButton busy={busy}>ログイン</SubmitButton>
+      </form>
+
+      <div className="mt-14 border-t border-line pt-10 text-center">
+        <p className="text-[14px]">はじめてご利用の方</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-mute">会員登録をすると、閲覧履歴や購入履歴をマイページで確認できます。</p>
+        <a
+          href="#/register"
+          className="mt-6 block w-full border border-ink py-4 text-[13px] tracking-[0.1em] transition-colors hover:bg-ink hover:text-paper"
+        >
+          新規会員登録
+        </a>
+        <p className="mt-6 text-[11px] text-mute">会員登録をしなくても、商品の閲覧・ご購入はご利用いただけます。</p>
+      </div>
+    </AuthLayout>
+  )
+}
+
+function RegisterPage() {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [agree, setAgree] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const next: Record<string, string> = {}
+    if (!name.trim()) next.name = 'お名前を入力してください'
+    if (!isEmail(email)) next.email = 'メールアドレスを正しく入力してください'
+    if (password.length < MEMBER.minPasswordLength) next.password = `パスワードは${MEMBER.minPasswordLength}文字以上で入力してください`
+    if (confirm !== password) next.confirm = 'パスワードが一致しません'
+    if (!agree) next.agree = 'プライバシーポリシーへの同意が必要です'
+    setErrors(next)
+    setNotice('')
+    if (Object.keys(next).length) return
+    setBusy(true)
+    const result = await signUp(name.trim(), email.trim(), password)
+    setBusy(false)
+    if (!result.ok) setNotice(result.message)
+    else setNotice('ご登録のメールアドレスに確認メールをお送りしました。メールに記載のリンクから登録を完了してください。')
+  }
+
+  return (
+    <AuthLayout eyebrow="Register" title="新規会員登録" lead="会員登録をすると、閲覧履歴や購入履歴をマイページで確認できます。">
+      <form onSubmit={submit} noValidate className="space-y-6">
+        <Field label="お名前" value={name} onChange={setName} autoComplete="name" error={errors.name} />
+        <Field label="メールアドレス" type="email" value={email} onChange={setEmail} autoComplete="email" error={errors.email} />
+        <Field
+          label="パスワード"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="new-password"
+          error={errors.password}
+          hint={`${MEMBER.minPasswordLength}文字以上`}
+        />
+        <Field label="パスワード（確認）" type="password" value={confirm} onChange={setConfirm} autoComplete="new-password" error={errors.confirm} />
+        <div>
+          <label className="flex cursor-pointer items-start gap-3 text-[13px] leading-relaxed">
+            <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-ink" />
+            <span>
+              <a href="#/privacy" target="_blank" rel="noreferrer" className="underline underline-offset-4">プライバシーポリシー</a>
+              に同意します
+            </span>
+          </label>
+          {errors.agree && <p className="mt-1.5 text-[12px] text-[#b42318]">{errors.agree}</p>}
+        </div>
+        {notice && <Notice>{notice}</Notice>}
+        <SubmitButton busy={busy}>会員登録する</SubmitButton>
+      </form>
+      <div className="mt-8 text-center text-[12px] text-mute">
+        すでに会員の方は
+        <a href="#/login" className="ml-1 text-ink underline underline-offset-4">ログイン</a>
+      </div>
+    </AuthLayout>
+  )
+}
+
+// マイページの見本（#/account/preview で表示。会員機能をつなぐ前のデザイン確認用）
+const PREVIEW_MEMBER: Member = { name: 'FOCUS 会員', email: 'member@example.com' }
+const PREVIEW_ORDERS: Order[] = [
+  {
+    id: 'FC-000128',
+    date: '2026.10.20',
+    status: '発送済み',
+    shipping: 880,
+    lines: [{ productId: 'focus-logo-tee', variant: 'Black / M', qty: 1, price: 8800 }],
+  },
+  {
+    id: 'FC-000097',
+    date: '2026.09.02',
+    status: 'お届け済み',
+    shipping: 0,
+    lines: [
+      { productId: 'focus-target-beanie', variant: 'Gray / ONE', qty: 1, price: 6600 },
+      { productId: 'focus-logo-tee', variant: 'Black / L', qty: 2, price: 8800 },
+    ],
+  },
+]
+
+const formatDate = (t: number) => {
+  const d = new Date(t)
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+}
+
+function AccountPage({ preview }: { preview: boolean }) {
+  const loggedIn = useMember()
+  const member = preview ? PREVIEW_MEMBER : loggedIn
+  const [tab, setTab] = useState<'history' | 'orders' | 'profile'>('history')
+  const [history, setHistory] = useState(getViewHistory)
+  const [orders, setOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    if (preview) setOrders(PREVIEW_ORDERS)
+    else if (member) getOrders().then(setOrders)
+  }, [preview, member])
+
+  if (!member) return <LoginPage message="マイページをご利用いただくには、ログインしてください。" />
+
+  const tabs = [
+    { id: 'history', label: '閲覧履歴' },
+    { id: 'orders', label: '購入履歴' },
+    { id: 'profile', label: '会員情報' },
+  ] as const
+  const viewed = history.map(h => ({ ...h, product: findProduct(h.productId) })).filter(h => h.product)
+
+  return (
+    <div className="mx-auto w-full max-w-[760px] px-5 pb-8 pt-28 md:pt-36">
+      {preview && (
+        <p className="mb-10 border border-line bg-stone px-4 py-3 text-center text-[12px] leading-relaxed">
+          マイページの見本です（会員機能は準備中）。購入履歴と会員情報は見本の内容で、閲覧履歴はこのブラウザで見た商品です。
+        </p>
+      )}
+      <SectionHeading eyebrow="My page" title="マイページ" />
+      <p className="mt-4 text-center text-[13px] text-mute">{member.name} 様</p>
+
+      <div className="mt-10 flex justify-center gap-8 border-b border-line" role="tablist">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`-mb-px border-b py-3 text-[13px] tracking-wide transition-colors ${
+              tab === t.id ? 'border-ink text-ink' : 'border-transparent text-mute hover:text-ink'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-8" role="tabpanel">
+        {tab === 'history' &&
+          (viewed.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-[14px] text-mute">閲覧した商品はまだありません</p>
+              <div className="mt-8">
+                <ArrowLink href="#/shop">商品を見る</ArrowLink>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-x-5">
+                {viewed.map(h => (
+                  <a key={h.productId} href={`#/product/${h.productId}`} className="group block">
+                    <div className="aspect-[3/4] overflow-hidden bg-stone">
+                      <img src={h.product!.images[0]} alt={h.product!.nameJa} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                    </div>
+                    <p className="mt-2 truncate text-[12px]">{h.product!.name}</p>
+                    <p className="mt-0.5 flex justify-between text-[11px] text-mute">
+                      <span className="tabular-nums">{yen(h.product!.price)}</span>
+                      <span className="tabular-nums">{formatDate(h.viewedAt)}</span>
+                    </p>
+                  </a>
+                ))}
+              </div>
+              <div className="mt-10 text-center">
+                <button
+                  onClick={() => {
+                    clearViewHistory()
+                    setHistory([])
+                  }}
+                  className="text-[12px] text-mute underline underline-offset-4 hover:text-ink"
+                >
+                  閲覧履歴を削除する
+                </button>
+              </div>
+            </>
+          ))}
+
+        {tab === 'orders' &&
+          (orders.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-[14px] text-mute">購入履歴はまだありません</p>
+              <div className="mt-8">
+                <ArrowLink href="#/shop">商品を見る</ArrowLink>
+              </div>
+            </div>
+          ) : (
+            <ul className="space-y-6">
+              {orders.map(order => {
+                const subtotal = order.lines.reduce((s, l) => s + l.price * l.qty, 0)
+                return (
+                  <li key={order.id} className="border border-line">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-stone/60 px-4 py-3 text-[12px]">
+                      <span className="tabular-nums">
+                        {order.date}
+                        <span className="ml-3 text-mute">注文番号 {order.id}</span>
+                      </span>
+                      <span className="border border-ink px-2 py-0.5 text-[11px]">{order.status}</span>
+                    </div>
+                    <ul className="divide-y divide-line px-4">
+                      {order.lines.map((line, i) => {
+                        const product = findProduct(line.productId)
+                        return (
+                          <li key={i} className="flex items-center gap-4 py-4">
+                            <a href={`#/product/${line.productId}`} className="h-20 w-15 shrink-0 overflow-hidden bg-stone">
+                              {product && <img src={product.images[0]} alt={product.nameJa} className="h-full w-full object-cover" />}
+                            </a>
+                            <div className="min-w-0 flex-1 text-[13px]">
+                              <p className="truncate">{product?.name ?? line.productId}</p>
+                              <p className="mt-1 text-[11px] text-mute">
+                                {line.variant}・数量 {line.qty}
+                              </p>
+                            </div>
+                            <p className="shrink-0 text-[13px] tabular-nums">{yen(line.price * line.qty)}</p>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    <div className="flex justify-between border-t border-line px-4 py-3 text-[13px]">
+                      <span className="text-mute">合計（送料{order.shipping === 0 ? '無料' : yen(order.shipping)}・税込）</span>
+                      <span className="tabular-nums">{yen(subtotal + order.shipping)}</span>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ))}
+
+        {tab === 'profile' && (
+          <div>
+            <dl className="border-t border-line">
+              {[
+                ['お名前', member.name],
+                ['メールアドレス', member.email],
+                ['パスワード', '••••••••'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-4 border-b border-line py-4">
+                  <div className="min-w-0">
+                    <dt className="text-[11px] text-mute">{label}</dt>
+                    <dd className="mt-0.5 truncate text-[14px]">{value}</dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-4 text-[11px] leading-relaxed text-mute">
+              登録内容の変更・退会をご希望の場合は
+              <a href={`mailto:${SHOP.contactEmail}`} className="mx-1 text-ink underline underline-offset-2">{SHOP.contactEmail}</a>
+              までご連絡ください。
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-16 border-t border-line pt-8 text-center">
+        <button
+          onClick={() => {
+            if (preview) window.location.hash = '/'
+            else signOut().then(() => (window.location.hash = '/'))
+          }}
+          className="border border-line px-10 py-3 text-[13px] tracking-wide transition-colors hover:border-ink"
+        >
+          ログアウト
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function NotFoundPage() {
   return (
     <Container className="flex flex-col items-center pb-10 pt-32 text-center">
@@ -1661,6 +2122,15 @@ export default function App() {
       break
     case 'product':
       page = <ProductPage id={route.id} onAdd={addToCart} />
+      break
+    case 'login':
+      page = <LoginPage key={String(route.reset)} reset={route.reset} />
+      break
+    case 'register':
+      page = <RegisterPage />
+      break
+    case 'account':
+      page = <AccountPage key={String(route.preview)} preview={route.preview} />
       break
     default:
       page = <NotFoundPage />
