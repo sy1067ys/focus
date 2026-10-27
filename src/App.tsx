@@ -2,12 +2,19 @@ import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode } fro
 import { PRODUCTS, CATEGORIES, CATEGORY_LABELS, type Category, type Product } from './products'
 import { SHOP } from './shop-config'
 import { logoImg, markImg } from './brand-assets'
+import { lineupTee, lineupBeanie } from './lineup-images'
 import { gaEnabled, clarityEnabled, initAnalytics, trackPageView, trackCommerce, type TrackItem } from './analytics'
 
 // ─── 共通 ─────────────────────────────────────────────────────
 
 // ブランドのコンセプト（トップページの一番大きな見出し。\n の位置で改行します）
 const CONCEPT = 'Focus point\non life.'
+
+// FOCUS line up（「FOCUSについて」と「Collection」の間に表示。写真を押すと商品ページへ）
+const LINEUP: { label: string; labelEn: string; productId: string; image: string; alt: string }[] = [
+  { label: 'Tシャツ', labelEn: 'T-shirts', productId: 'focus-logo-tee', image: lineupTee, alt: 'FOCUS ロゴTシャツ（表・裏）' },
+  { label: '帽子', labelEn: 'Headwear', productId: 'focus-target-beanie', image: lineupBeanie, alt: 'FOCUS ターゲット ビーニー（ブラック・グレー）' },
+]
 
 // 公式LINE（トップページの「公式LINE」欄の内容）
 const LINE_OA = {
@@ -266,7 +273,7 @@ function Lines({ text }: { text: string }) {
 // トップページは1枚のページで、#/shop #/about #/guide #/info で各セクションへ移動します。
 // 商品の詳細だけは別画面（#/product/商品ID）です。
 
-const SECTIONS = ['top', 'shop', 'about', 'guide', 'line', 'info'] as const
+const SECTIONS = ['top', 'shop', 'about', 'lineup', 'guide', 'line', 'info'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 type Route =
@@ -287,7 +294,7 @@ function parseHash(): Route {
     const category = CATEGORIES.find(c => c.toLowerCase() === second.toLowerCase())
     return category ? homeRoute('shop', category) : { page: 'notfound' }
   }
-  if (first === 'about' || first === 'guide' || first === 'line' || first === 'info') return homeRoute(first)
+  if (first === 'about' || first === 'lineup' || first === 'guide' || first === 'line' || first === 'info') return homeRoute(first)
   if (first === 'legal' || first === 'privacy') return homeRoute('info', null, first)
   if (first === 'product' && second) return { page: 'product', id: decodeURIComponent(second) }
   if (first === 'links') return { page: 'links' }
@@ -324,6 +331,7 @@ function pageTitle(route: Route): string {
         top: CONCEPT.replace('\n', ' '),
         shop: route.category ? CATEGORY_LABELS[route.category] : 'Online store',
         about: 'About',
+        lineup: 'Line up',
         guide: 'ご利用ガイド',
         line: '公式LINE',
         info: route.open === 'legal' ? '特定商取引法に基づく表記' : route.open === 'privacy' ? 'プライバシーポリシー' : 'Info',
@@ -717,6 +725,7 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
 
 const NAV_ITEMS: { href: string; label: string; section: SectionId }[] = [
   { href: '#/about', label: 'About', section: 'about' },
+  { href: '#/lineup', label: 'Line up', section: 'lineup' },
   { href: '#/shop', label: 'Shop', section: 'shop' },
   { href: '#/guide', label: 'Guide', section: 'guide' },
   { href: '#/info', label: 'Info', section: 'info' },
@@ -912,6 +921,9 @@ function HomePage({ category }: { category: Category | null }) {
         </div>
       </section>
 
+      {/* FOCUS line up */}
+      <LineupSection />
+
       {/* オンラインストア */}
       <section id="shop" className="mx-auto mt-28 w-full max-w-[1040px] scroll-mt-20 px-5">
         <SectionHeading eyebrow="Online store" title="Collection" />
@@ -987,6 +999,46 @@ function HomePage({ category }: { category: Category | null }) {
       {/* 公式LINE */}
       <LineSection />
     </>
+  )
+}
+
+function LineupSection() {
+  return (
+    <section id="lineup" className="mx-auto mt-28 w-full max-w-[1040px] scroll-mt-20 px-5">
+      <SectionHeading eyebrow="Line up" title="FOCUS line up" />
+      <div className="mt-10 grid gap-12 md:grid-cols-2 md:gap-8">
+        {LINEUP.map(item => {
+          const product = findProduct(item.productId)
+          if (!product) return null
+          return (
+            <a key={item.productId} href={`#/product/${product.id}`} className="group block">
+              <div className="aspect-[3/2] overflow-hidden bg-white">
+                <img
+                  src={item.image}
+                  alt={item.alt}
+                  loading="lazy"
+                  className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-[1.03]"
+                />
+              </div>
+              <div className="mt-4 flex items-end justify-between gap-4 border-b border-line pb-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-mute">{item.labelEn}</p>
+                  <h3 className="mt-1 text-[20px] font-light">{item.label}</h3>
+                  <p className="mt-1 text-[12px] text-mute">
+                    {product.name}
+                    <span className="ml-2 tabular-nums text-ink">{yen(product.price)}</span>
+                  </p>
+                </div>
+                <span className="flex shrink-0 items-center gap-2 text-[12px] tracking-wide">
+                  商品を見る
+                  <Icon name="arrow" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </a>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
