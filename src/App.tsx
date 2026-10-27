@@ -49,11 +49,13 @@ const LINE_OA = {
 }
 
 // ブランドのSNS（URLを入れたものだけが SNS用ページとフッターに表示されます）
-const SOCIAL_LINKS: { label: string; handle: string; url: string }[] = [
-  { label: 'Instagram', handle: '@focus', url: SHOP.instagramUrl },
-  { label: 'X', handle: '@focus', url: '' },
-  { label: 'TikTok', handle: '@focus', url: '' },
-  { label: 'LINE', handle: `公式アカウント ${LINE_OA.id}`, url: LINE_OA.url },
+// handle はアカウント名、about は「公式SNS」欄に出す一言です（@focus は仮の名前です）
+// URLが空欄のSNSは「公式SNS」欄で「近日公開」と表示されます
+const SOCIAL_LINKS: { label: string; handle: string; url: string; about: string }[] = [
+  { label: 'Instagram', handle: '@focus', url: SHOP.instagramUrl, about: '新作やスタイリングを写真でお届けします。' },
+  { label: 'X', handle: '@focus', url: '', about: '入荷・販売開始のお知らせを発信します。' },
+  { label: 'TikTok', handle: '@focus', url: '', about: '着用イメージを動画でご紹介します。' },
+  { label: 'LINE', handle: `公式アカウント ${LINE_OA.id}`, url: LINE_OA.url, about: '新作・再入荷のお知らせをお届けします。' },
 ]
 const ACTIVE_SOCIALS = SOCIAL_LINKS.filter(s => s.url)
 
@@ -287,7 +289,7 @@ function Lines({ text }: { text: string }) {
 // トップページは1枚のページで、#/shop #/about #/guide #/info で各セクションへ移動します。
 // 商品の詳細だけは別画面（#/product/商品ID）です。
 
-const SECTIONS = ['top', 'shop', 'about', 'lineup', 'guide', 'line', 'info'] as const
+const SECTIONS = ['top', 'shop', 'about', 'lineup', 'guide', 'sns', 'line', 'info'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 type Route =
@@ -311,7 +313,7 @@ function parseHash(): Route {
     const category = CATEGORIES.find(c => c.toLowerCase() === second.toLowerCase())
     return category ? homeRoute('shop', category) : { page: 'notfound' }
   }
-  if (first === 'about' || first === 'lineup' || first === 'guide' || first === 'line' || first === 'info') return homeRoute(first)
+  if (first === 'about' || first === 'lineup' || first === 'guide' || first === 'sns' || first === 'line' || first === 'info') return homeRoute(first)
   if (first === 'legal' || first === 'privacy') return homeRoute('info', null, first)
   if (first === 'product' && second) return { page: 'product', id: decodeURIComponent(second) }
   if (first === 'links') return { page: 'links' }
@@ -353,6 +355,7 @@ function pageTitle(route: Route): string {
         about: 'About',
         lineup: 'Line up',
         guide: 'ご利用ガイド',
+        sns: '公式SNS',
         line: '公式LINE',
         info: route.open === 'legal' ? '特定商取引法に基づく表記' : route.open === 'privacy' ? 'プライバシーポリシー' : 'Info',
       }
@@ -1042,6 +1045,7 @@ function InfoSection({ open }: { open: 'legal' | 'privacy' | null }) {
         <li><a href="#/about" className={item}>FOCUSについて</a></li>
         <li><a href="#/guide" className={item}>ご利用ガイド</a></li>
         <li><a href="#/login" className={item}>ログイン・会員登録</a></li>
+        <li><a href="#/sns" className={item}>公式SNS</a></li>
         <li><a href="#/line" className={item}>公式LINE</a></li>
         <li>
           <details key={`legal-${open}`} open={open === 'legal'} className="scroll-mt-20">
@@ -1253,6 +1257,10 @@ function HomePage({ category }: { category: Category | null }) {
       </section>
 
       {/* 公式LINE */}
+      {/* 公式SNS */}
+      <SnsSection />
+
+      {/* 公式LINE */}
       <LineSection />
     </>
   )
@@ -1294,6 +1302,44 @@ function LineupSection() {
           )
         })}
       </div>
+    </section>
+  )
+}
+
+// LINEはすぐ下に専用の欄があるので、ここではそれ以外のSNSを並べる
+function SnsSection() {
+  const list = SOCIAL_LINKS.filter(s => s.label !== 'LINE')
+  return (
+    <section id="sns" className="mx-auto mt-28 w-full max-w-[1040px] scroll-mt-20 px-5">
+      <SectionHeading eyebrow="Follow us" title="公式SNS" />
+      <p className="mt-6 text-center text-[14px] leading-[2]">
+        新作の情報やスタイリングを、
+        <br className="sm:hidden" />
+        SNSでも発信しています。
+      </p>
+      <ul className="mt-10 grid border-t border-line md:grid-cols-3 md:border-l">
+        {list.map(s => (
+          <li key={s.label} className="flex flex-col border-b border-line py-8 md:border-r md:px-8 md:py-10">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-mute">{s.label}</p>
+            <p className="mt-3 text-[22px] font-light tracking-[-0.01em]">{s.handle}</p>
+            <p className="mt-3 flex-1 text-[13px] leading-[1.9] text-mute">{s.about}</p>
+            {s.url ? (
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noreferrer"
+                data-sns={s.label}
+                className="group mt-6 flex items-center justify-between border border-ink px-5 py-3.5 text-[13px] tracking-[0.08em] transition-colors hover:bg-ink hover:text-paper"
+              >
+                フォローする
+                <Icon name="arrow" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </a>
+            ) : (
+              <p className="mt-6 border border-line px-5 py-3.5 text-[13px] tracking-[0.08em] text-mute">近日公開</p>
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
