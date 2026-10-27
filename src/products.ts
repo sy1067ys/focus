@@ -4,11 +4,22 @@
 // 写真は今は仮の素材です。実際の商品写真のURLに差し替えてください。
 // ─────────────────────────────────────────────────────────────
 
-export const CATEGORIES = ['Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Accessories'] as const
+import {
+  teeFront,
+  teeBack,
+  beanieBlack,
+  beanieGray,
+  beanieBlackModel,
+  beanieGrayModel,
+} from './lineup-images'
+
+export const CATEGORIES = ['T-shirts', 'Headwear', 'Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Accessories'] as const
 export type Category = (typeof CATEGORIES)[number]
 
 // カテゴリの日本語名
 export const CATEGORY_LABELS: Record<Category, string> = {
+  'T-shirts': 'Tシャツ',
+  Headwear: '帽子',
   Outerwear: 'アウター',
   Tops: 'トップス',
   Bottoms: 'ボトムス',
@@ -33,6 +44,43 @@ export type Product = {
 }
 
 export const PRODUCTS: Product[] = [
+  // ─── FOCUS line up ───────────────────────────────────────
+  // 価格・素材・お手入れ・サイズは仮の内容です。公開前に必ず書き換えてください。
+  {
+    id: 'focus-logo-tee',
+    name: 'FOCUS Logo Tee',
+    nameJa: 'FOCUS ロゴTシャツ',
+    price: 8800, // 仮の価格
+    category: 'T-shirts',
+    description:
+      'フロントにFOCUSのロゴ、バックの裾にシンボルマークを大きく配したTシャツ。シンプルなブラックに白のグラフィックが映える、ブランドを象徴する一枚です。',
+    material: '［素材・混率］',
+    care: '［お手入れ方法］',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: [{ name: 'Black', hex: '#111111' }],
+    images: [teeFront, teeBack],
+    isNew: true,
+  },
+  {
+    id: 'focus-target-beanie',
+    name: 'FOCUS Target Beanie',
+    nameJa: 'FOCUS ターゲット ビーニー',
+    price: 6600, // 仮の価格
+    category: 'Headwear',
+    description:
+      'シンボルマークのターゲットモチーフを大きくあしらったニットビーニー。ブラックとグレーの2色展開です。',
+    material: '［素材・混率］',
+    care: '［お手入れ方法］',
+    sizes: ['ONE'],
+    colors: [
+      { name: 'Black', hex: '#111111' },
+      { name: 'Gray', hex: '#a9a9a7' },
+    ],
+    images: [beanieBlack, beanieGray, beanieBlackModel, beanieGrayModel],
+    isNew: true,
+  },
+
+  // ─── 仮の商品（写真・内容とも見本です。不要になったら削除してください） ──
   {
     id: 'wide-sleeve-wool-coat',
     name: 'Wide Sleeve Wool Coat',
