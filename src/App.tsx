@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { PRODUCTS, CATEGORIES, CATEGORY_LABELS, type Category, type Product } from './products'
 import { SHOP } from './shop-config'
 import { logoImg, markImg } from './brand-assets'
 import { lineupTee, lineupBeanie } from './lineup-images'
-import { gaEnabled, clarityEnabled, initAnalytics, trackPageView, trackCommerce, type TrackItem } from './analytics'
+import { gaEnabled, clarityEnabled, initAnalytics, trackPageView, trackCommerce, trackEvent, type TrackItem } from './analytics'
 
 // ─── 共通 ─────────────────────────────────────────────────────
 
@@ -403,7 +403,7 @@ function useCart() {
 
 // ─── アイコン ─────────────────────────────────────────────────
 
-function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus' | 'minus' | 'arrow' | 'bag'; className?: string }) {
+function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus' | 'minus' | 'arrow' | 'bag' | 'search'; className?: string }) {
   const paths: Record<string, ReactNode> = {
     // ショッピングバッグ（カート）
     bag: (
@@ -431,6 +431,13 @@ function Icon({ name, className = 'h-5 w-5' }: { name: 'menu' | 'close' | 'plus'
       </>
     ),
     minus: <line x1="5" y1="12" x2="19" y2="12" />,
+    // 虫めがね（検索）
+    search: (
+      <>
+        <circle cx="10.5" cy="10.5" r="6" />
+        <line x1="15" y1="15" x2="20" y2="20" />
+      </>
+    ),
     arrow: (
       <>
         <line x1="4" y1="12" x2="20" y2="12" />
@@ -723,6 +730,186 @@ function ProductPage({ id, onAdd }: { id: string; onAdd: (item: Omit<CartLine, '
 
 // ─── ナビゲーション（画面上部に固定） ───────────────────────
 
+// ─── 商品検索 ─────────────────────────────────────────────────
+// 商品名（英語・日本語）、カテゴリ、カラー、商品説明から探します。
+// ひらがな／カタカナ、全角／半角、大文字／小文字の違いは区別しません。
+
+function normalize(text: string) {
+  return text
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60))
+    .replace(/[\s　・\-－‐]+/g, '')
+}
+
+const SEARCH_INDEX = PRODUCTS.map(p => ({
+  product: p,
+  // 名前に一致した商品を上に並べるため、名前とそれ以外を分けておく
+  name: normalize(`${p.name} ${p.nameJa}`),
+  rest: normalize([p.category, CATEGORY_LABELS[p.category], ...p.colors.map(c => c.name), p.description].join(' ')),
+}))
+
+function searchProducts(query: string): Product[] {
+  const terms = query.split(/[\s　]+/).map(normalize).filter(Boolean)
+  if (terms.length === 0) return []
+  return SEARCH_INDEX.filter(e => terms.every(t => e.name.includes(t) || e.rest.includes(t)))
+    .sort((a, b) => Number(terms.every(t => b.name.includes(t))) - Number(terms.every(t => a.name.includes(t))))
+    .map(e => e.product)
+}
+
+function SearchResults({
+  query,
+  results,
+  active,
+  onPick,
+}: {
+  query: string
+  results: Product[]
+  active: number
+  onPick: (p: Product) => void
+}) {
+  if (!query.trim()) return null
+  if (results.length === 0) {
+    return <p className="px-4 py-5 text-[13px] text-mute">「{query.trim()}」に一致する商品はありません</p>
+  }
+  return (
+    <ul role="listbox" aria-label="検索結果" className="max-h-[60vh] overflow-y-auto py-1">
+      {results.map((p, i) => (
+        <li key={p.id} role="option" aria-selected={i === active}>
+          <a
+            href={`#/product/${p.id}`}
+            onClick={() => onPick(p)}
+            className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-stone ${i === active ? 'bg-stone' : ''}`}
+          >
+            <span className="h-14 w-11 shrink-0 overflow-hidden bg-stone">
+              <img src={p.images[0]} alt="" className="h-full w-full object-cover" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px]">{p.name}</span>
+              <span className="mt-0.5 block truncate text-[11px] text-mute">
+                {CATEGORY_LABELS[p.category]}・{p.nameJa}
+              </span>
+            </span>
+            <span className="shrink-0 text-[12px] tabular-nums">{yen(p.price)}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function useSearch(onDone: () => void) {
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
+  const results = searchProducts(query).slice(0, 8)
+
+  const pick = (p: Product) => {
+    trackEvent('search', { search_term: query.trim() })
+    setQuery('')
+    onDone()
+    if (window.location.hash !== `#/product/${p.id}`) window.location.hash = `/product/${p.id}`
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActive(a => Math.min(a + 1, results.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActive(a => Math.max(a - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const target = results[active] ?? results[0]
+      if (target) pick(target)
+    } else if (e.key === 'Escape') {
+      setQuery('')
+      onDone()
+      ;(e.target as HTMLInputElement).blur()
+    }
+  }
+
+  const onChange = (value: string) => {
+    setQuery(value)
+    setActive(0)
+  }
+
+  return { query, results, active, pick, onKeyDown, onChange }
+}
+
+// PC：ヘッダー左上の検索欄
+function SearchBox() {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const search = useSearch(() => setOpen(false))
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  return (
+    <div ref={box} className="relative" role="search">
+      <label className="flex w-[200px] items-center gap-2 border-b border-line pb-1 transition-colors focus-within:border-ink lg:w-[240px]">
+        <Icon name="search" className="h-4 w-4 shrink-0 text-mute" />
+        <input
+          type="search"
+          value={search.query}
+          onChange={e => {
+            search.onChange(e.target.value)
+            setOpen(true)
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={search.onKeyDown}
+          placeholder="商品を検索"
+          aria-label="商品を検索"
+          style={{ outline: 'none' }}
+          className="w-full bg-transparent text-[13px] outline-none placeholder:text-mute [&::-webkit-search-cancel-button]:hidden"
+        />
+      </label>
+      {open && search.query.trim() && (
+        <div className="absolute left-0 top-full z-50 mt-3 w-[340px] border border-line bg-paper shadow-[0_12px_32px_rgba(0,0,0,0.08)]">
+          <SearchResults query={search.query} results={search.results} active={search.active} onPick={search.pick} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// スマホ：虫めがねを押すとヘッダーの下に開く検索パネル
+function SearchPanel({ onClose }: { onClose: () => void }) {
+  const search = useSearch(onClose)
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    input.current?.focus()
+  }, [])
+  return (
+    <div className="absolute inset-x-0 top-full border-b border-line bg-paper shadow-[0_12px_32px_rgba(0,0,0,0.08)] md:hidden" role="search">
+      <div className="flex items-center gap-3 border-b border-line px-5 py-3">
+        <Icon name="search" className="h-4 w-4 shrink-0 text-mute" />
+        <input
+          ref={input}
+          type="search"
+          value={search.query}
+          onChange={e => search.onChange(e.target.value)}
+          onKeyDown={search.onKeyDown}
+          placeholder="商品を検索"
+          aria-label="商品を検索"
+          style={{ outline: 'none' }}
+          enterKeyHint="search"
+          className="w-full bg-transparent text-[16px] outline-none placeholder:text-mute [&::-webkit-search-cancel-button]:hidden"
+        />
+        <button onClick={onClose} className="-mr-2 shrink-0 p-2" aria-label="検索を閉じる">
+          <Icon name="close" className="h-4 w-4" />
+        </button>
+      </div>
+      <SearchResults query={search.query} results={search.results} active={search.active} onPick={search.pick} />
+    </div>
+  )
+}
+
 const NAV_ITEMS: { href: string; label: string; section: SectionId }[] = [
   { href: '#/about', label: 'About', section: 'about' },
   { href: '#/lineup', label: 'Line up', section: 'lineup' },
@@ -741,6 +928,9 @@ function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: nu
   }, [])
   // トップの一番上では大きなマークが見えているので、ナビの小さなマークは隠す
   const showMark = route.page !== 'home' || scrolled
+  const [searchOpen, setSearchOpen] = useState(false)
+  // ページが変わったらスマホの検索パネルを閉じる
+  useEffect(() => setSearchOpen(false), [route])
 
   return (
     <header
@@ -749,14 +939,31 @@ function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: nu
       }`}
     >
       <div className="mx-auto flex h-14 w-full max-w-[1040px] items-center justify-between px-5">
-        <a
-          href="#/"
-          aria-label={`${SHOP.brandName} トップへ`}
-          className={`transition-opacity duration-300 ${showMark ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-        >
-          <Mark className="w-6" />
-        </a>
-        <nav className="flex items-center gap-4 text-[12px] tracking-wide md:gap-8 md:text-[13px]" aria-label="メインメニュー">
+        {/* 左上：マーク（スクロールすると表示）＋ 商品検索 */}
+        <div className="flex items-center">
+          <a
+            href="#/"
+            aria-label={`${SHOP.brandName} トップへ`}
+            tabIndex={showMark ? undefined : -1}
+            className={`shrink-0 overflow-hidden transition-all duration-300 ${
+              showMark ? 'mr-3 w-6 opacity-100 md:mr-6' : 'pointer-events-none mr-0 w-0 opacity-0'
+            }`}
+          >
+            <Mark className="w-6" />
+          </a>
+          <div className="hidden md:block">
+            <SearchBox />
+          </div>
+          <button
+            onClick={() => setSearchOpen(o => !o)}
+            className="-m-1.5 p-1.5 md:hidden"
+            aria-label="商品を検索"
+            aria-expanded={searchOpen}
+          >
+            <Icon name="search" className="h-5 w-5" />
+          </button>
+        </div>
+        <nav className="flex items-center gap-3 text-[12px] tracking-wide min-[400px]:gap-4 md:gap-8 md:text-[13px]" aria-label="メインメニュー">
           {NAV_ITEMS.map(item => (
             <a
               key={item.href}
@@ -768,10 +975,11 @@ function SiteNav({ route, cartCount, onOpenCart }: { route: Route; cartCount: nu
               {item.label}
             </a>
           ))}
-          <span className="h-3.5 w-px bg-line" aria-hidden="true" />
+          <span className="hidden h-3.5 w-px bg-line min-[400px]:block" aria-hidden="true" />
           <CartButton count={cartCount} onClick={onOpenCart} className="-m-1.5 p-1.5" />
         </nav>
       </div>
+      {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} />}
     </header>
   )
 }
