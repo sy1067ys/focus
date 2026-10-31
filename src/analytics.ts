@@ -6,11 +6,11 @@
 export const ANALYTICS = {
   // Googleアナリティクス4 の「測定ID」（例：'G-AB12CD34EF'）
   // アクセス数・流入元・売れ筋・カート投入などの数字を見るためのツール
-  ga4Id: '',
+  ga4Id: 'G-L0ZHX5NKZ1',
 
   // Microsoft Clarity の「プロジェクトID」（例：'abcd1234ef'）
   // ヒートマップ（よく見られている場所）や、閲覧の様子の録画を見るためのツール
-  clarityId: '',
+  clarityId: 'z66rfsoxtw',
 }
 
 // ─── ここから下は変更しなくて大丈夫です ─────────────────────────
